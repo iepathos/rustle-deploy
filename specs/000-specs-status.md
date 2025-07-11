@@ -7,12 +7,12 @@ This document tracks the status of all specification documents in the project.
 | Spec | Feature | Status |
 |------|---------|--------|
 | 010 | Rustle Deploy Tool | ✅ Complete |
+| 020 | Execution Plan Integration | ✅ Complete |
 
 ## In Progress / Planned Specs
 
 | Spec | Feature | Status |
 |------|---------|--------|
-| 020 | Execution Plan Integration | ⬜ Planned |
 | 030 | Inventory Parsing | ⬜ Planned |
 | 040 | Runtime Execution Engine | ⬜ Planned |
 | 050 | Module System Integration | ⬜ Planned |
