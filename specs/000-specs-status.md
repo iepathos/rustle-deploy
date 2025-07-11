@@ -16,6 +16,7 @@ This document tracks the status of all specification documents in the project.
 | 030 | Inventory Parsing | ⬜ Planned |
 | 040 | Runtime Execution Engine | ⬜ Planned |
 | 050 | Module System Integration | ⬜ Planned |
+| 060 | Rustle Plan Output Compatibility | ⬜ Planned |
 
 ## Notes
 
