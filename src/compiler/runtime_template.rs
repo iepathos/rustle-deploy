@@ -164,7 +164,7 @@ impl RuntimeTemplateGenerator {
         // Include each compiled module
         for (i, module) in compiled_modules.iter().enumerate() {
             code.push_str(&format!("// Module: {}\n", module.spec.name));
-            code.push_str(&format!("mod compiled_module_{};\n", i));
+            code.push_str(&format!("mod compiled_module_{i};\n"));
             code.push_str(&module.compiled_code);
             code.push_str("\n\n");
         }

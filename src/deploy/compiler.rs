@@ -174,6 +174,7 @@ impl BinaryCompiler {
         Ok(binary_data)
     }
 
+    #[allow(dead_code)]
     async fn generate_binary_project(
         &self,
         project_dir: &Path,
@@ -220,6 +221,7 @@ impl BinaryCompiler {
         Ok(())
     }
 
+    #[allow(dead_code)]
     fn generate_cargo_toml(&self, compilation: &BinaryCompilation) -> Result<String> {
         let cargo_toml = format!(
             r#"
@@ -241,6 +243,7 @@ tracing = "0.1"
         Ok(cargo_toml)
     }
 
+    #[allow(dead_code)]
     fn generate_main_rs(&self, compilation: &BinaryCompilation) -> Result<String> {
         let execution_plan_json = serde_json::to_string(&compilation.embedded_data.execution_plan)
             .map_err(|e| {
@@ -307,6 +310,7 @@ async fn main() -> Result<()> {{
         Ok(main_rs)
     }
 
+    #[allow(dead_code)]
     fn generate_embedded_file_declarations(&self, files: &[StaticFile]) -> String {
         files
             .iter()
@@ -320,6 +324,7 @@ async fn main() -> Result<()> {{
             .join("\n        ")
     }
 
+    #[allow(dead_code)]
     fn generate_module_implementations(&self, modules: &[ModuleImplementation]) -> String {
         modules
             .iter()
@@ -431,7 +436,7 @@ async fn main() -> Result<()> {{
             // Include a hash of the compiled code
             let mut code_hasher = Sha256::new();
             code_hasher.update(module.compiled_code.as_bytes());
-            hasher.update(&code_hasher.finalize());
+            hasher.update(code_hasher.finalize());
         }
 
         format!("{:x}", hasher.finalize())
@@ -518,14 +523,14 @@ async-trait = "0.1"
 
         // Write each compiled module as a separate file
         for (i, module) in compiled_modules.iter().enumerate() {
-            let module_file = modules_dir.join(format!("module_{}.rs", i));
+            let module_file = modules_dir.join(format!("module_{i}.rs"));
             fs::write(&module_file, &module.compiled_code).await?;
         }
 
         // Write module index file
         let mut mod_rs = String::new();
         for i in 0..compiled_modules.len() {
-            mod_rs.push_str(&format!("pub mod module_{};\n", i));
+            mod_rs.push_str(&format!("pub mod module_{i};\n"));
         }
 
         fs::write(modules_dir.join("mod.rs"), mod_rs).await?;

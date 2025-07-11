@@ -7,7 +7,14 @@ use tracing::{debug, warn};
 /// Module validator for security and compatibility
 pub struct ModuleValidator {
     security_policy: SecurityPolicy,
+    #[allow(dead_code)]
     compatibility_checker: CompatibilityChecker,
+}
+
+impl Default for ModuleValidator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ModuleValidator {
@@ -71,8 +78,7 @@ impl ModuleValidator {
                 match security_level {
                     SecurityLevel::Isolated => {
                         result.add_error(format!(
-                            "Isolated module contains forbidden operation: {}",
-                            description
+                            "Isolated module contains forbidden operation: {description}"
                         ));
                     }
                     SecurityLevel::Sandboxed => {
@@ -84,13 +90,11 @@ impl ModuleValidator {
                                 | "raw pointer manipulation"
                         ) {
                             result.add_error(format!(
-                                "Sandboxed module contains forbidden operation: {}",
-                                description
+                                "Sandboxed module contains forbidden operation: {description}"
                             ));
                         } else {
                             result.add_warning(format!(
-                                "Sandboxed module contains restricted operation: {}",
-                                description
+                                "Sandboxed module contains restricted operation: {description}"
                             ));
                         }
                     }
@@ -98,8 +102,7 @@ impl ModuleValidator {
                         // Allowed for trusted modules, but still warn about unsafe code
                         if description.contains("unsafe") {
                             result.add_warning(format!(
-                                "Trusted module contains potentially dangerous operation: {}",
-                                description
+                                "Trusted module contains potentially dangerous operation: {description}"
                             ));
                         }
                     }
@@ -118,8 +121,7 @@ impl ModuleValidator {
         for (pattern, description) in &suspicious_patterns {
             if self.contains_pattern(&module.source_code.main_file, pattern) {
                 result.add_warning(format!(
-                    "Module contains suspicious pattern: {}",
-                    description
+                    "Module contains suspicious pattern: {description}"
                 ));
             }
         }
@@ -189,7 +191,7 @@ impl ModuleValidator {
 
         for (pattern, description) in &quality_patterns {
             if self.contains_pattern(&module.source_code.main_file, pattern) {
-                result.add_warning(format!("Code quality issue: {}", description));
+                result.add_warning(format!("Code quality issue: {description}"));
             }
         }
 
@@ -205,8 +207,7 @@ impl ModuleValidator {
         if code_size > 1024 * 1024 {
             // 1MB
             result.add_warning(format!(
-                "Module is very large ({} bytes), may impact compilation time",
-                code_size
+                "Module is very large ({code_size} bytes), may impact compilation time"
             ));
         }
 
@@ -228,10 +229,10 @@ impl ModuleValidator {
             // Check for known problematic crates
             let blocked_crates = &self.security_policy.blocked_crates;
             for crate_name in blocked_crates {
-                if cargo_toml.contains(&format!("{} =", crate_name))
-                    || cargo_toml.contains(&format!("{} {{", crate_name))
+                if cargo_toml.contains(&format!("{crate_name} ="))
+                    || cargo_toml.contains(&format!("{crate_name} {{"))
                 {
-                    result.add_error(format!("Module depends on blocked crate: {}", crate_name));
+                    result.add_error(format!("Module depends on blocked crate: {crate_name}"));
                 }
             }
 
@@ -249,6 +250,7 @@ impl ModuleValidator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn has_circular_dependency(
         &self,
         root_name: &str,
@@ -275,6 +277,12 @@ pub struct ValidationResult {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
     pub info: Vec<String>,
+}
+
+impl Default for ValidationResult {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ValidationResult {
@@ -353,6 +361,12 @@ pub struct CompatibilityChecker {
     available_capabilities: Vec<String>,
 }
 
+impl Default for CompatibilityChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompatibilityChecker {
     pub fn new() -> Self {
         Self {
@@ -378,7 +392,7 @@ impl CompatibilityChecker {
 
     pub fn is_rust_version_compatible(&self, required: &str) -> Result<bool> {
         // Simple version comparison - in production, use semver crate
-        Ok(self.current_rust_version >= required.to_string())
+        Ok(self.current_rust_version.as_str() >= required)
     }
 
     pub fn is_platform_supported(&self, platform: &str) -> bool {

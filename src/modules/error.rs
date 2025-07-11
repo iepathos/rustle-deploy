@@ -336,7 +336,7 @@ impl From<shell_words::ParseError> for ModuleError {
 impl From<serde_json::Error> for ModuleError {
     fn from(err: serde_json::Error) -> Self {
         ModuleError::ExecutionFailed {
-            message: format!("JSON serialization error: {}", err),
+            message: format!("JSON serialization error: {err}"),
         }
     }
 }

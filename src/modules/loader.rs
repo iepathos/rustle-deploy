@@ -115,13 +115,13 @@ impl ModuleCompiler {
                     .resolve(source)
                     .await
                     .map_err(|e| ModuleError::LoadError {
-                        location: format!("{:?}", source),
+                        location: format!("{source:?}"),
                         error: e.to_string(),
                     });
             }
         }
 
-        Err(ModuleError::UnsupportedSource(format!("{:?}", source)))
+        Err(ModuleError::UnsupportedSource(format!("{source:?}")))
     }
 
     pub fn validate_module(&self, module: &LoadedModule) -> Result<(), ValidationError> {

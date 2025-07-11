@@ -106,7 +106,7 @@ impl CodeGenerator {
             code.push_str(&format!("mod module_{i};\n"));
         }
 
-        code.push_str("\n");
+        code.push('\n');
         code.push_str("use crate::modules::registry::ModuleRegistry;\n\n");
         code.push_str("pub fn register_all_modules(registry: &mut ModuleRegistry) {\n");
 
@@ -155,12 +155,12 @@ impl CodeGenerator {
     }
 
     fn generate_imports(&self, _module: &LoadedModule) -> Result<String, CompileError> {
-        let mut imports = Vec::new();
-
         // Add common imports (simplified for now)
-        imports.push("use std::fs;");
-        imports.push("use std::path::{Path, PathBuf};");
-        imports.push("use tokio::process::Command;");
+        let imports = [
+            "use std::fs;",
+            "use std::path::{Path, PathBuf};",
+            "use tokio::process::Command;",
+        ];
 
         Ok(imports.join("\n"))
     }

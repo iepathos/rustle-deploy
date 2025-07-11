@@ -185,7 +185,7 @@ impl ModuleSourceResolver for FileSystemResolver {
 
     fn cache_key(&self, source: &ModuleSource) -> String {
         match source {
-            ModuleSource::File { path } => format!("file:{}", path),
+            ModuleSource::File { path } => format!("file:{path}"),
             _ => unreachable!(),
         }
     }
@@ -194,6 +194,12 @@ impl ModuleSourceResolver for FileSystemResolver {
 /// Git repository module resolver
 pub struct GitResolver {
     cache_dir: PathBuf,
+}
+
+impl Default for GitResolver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GitResolver {
@@ -228,7 +234,7 @@ impl GitResolver {
                 })?;
 
             let output = Command::new("git")
-                .args(&["clone", repository, &cache_path.display().to_string()])
+                .args(["clone", repository, &cache_path.display().to_string()])
                 .output()
                 .await
                 .map_err(|e| ResolveError::GitError {
@@ -247,7 +253,7 @@ impl GitResolver {
         // Checkout the specified reference
         let output = Command::new("git")
             .current_dir(cache_path)
-            .args(&["checkout", reference])
+            .args(["checkout", reference])
             .output()
             .await
             .map_err(|e| ResolveError::GitError {
@@ -379,7 +385,7 @@ impl ModuleSourceResolver for GitResolver {
                     .replace("http://", "")
                     .replace("/", "_")
                     .replace(".", "_");
-                format!("{}_{}", safe_repo, reference)
+                format!("{safe_repo}_{reference}")
             }
             _ => unreachable!(),
         }
@@ -390,6 +396,12 @@ impl ModuleSourceResolver for GitResolver {
 pub struct HttpResolver {
     client: reqwest::Client,
     cache_dir: PathBuf,
+}
+
+impl Default for HttpResolver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl HttpResolver {
@@ -494,6 +506,12 @@ pub struct RegistryConfig {
     pub base_url: String,
     pub auth_token: Option<String>,
     pub verify_signatures: bool,
+}
+
+impl Default for RegistryResolver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RegistryResolver {
