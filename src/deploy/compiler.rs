@@ -16,12 +16,26 @@ impl BinaryCompiler {
     }
 
     pub async fn compile_binary(&self, compilation: &BinaryCompilation) -> Result<CompiledBinary> {
-        info!("Starting compilation for {}", compilation.binary_name);
+        self.compile_binary_with_modules(compilation, &[]).await
+    }
+
+    /// Compile binary with integrated module support
+    pub async fn compile_binary_with_modules(
+        &self,
+        compilation: &BinaryCompilation,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<CompiledBinary> {
+        info!(
+            "Starting compilation for {} with {} modules",
+            compilation.binary_name,
+            compiled_modules.len()
+        );
 
         let start_time = std::time::Instant::now();
 
-        // Check cache first
-        if let Some(cached) = self.check_cache(&compilation.checksum) {
+        // Check cache first (with module checksum included)
+        let cache_key = self.calculate_compilation_checksum(compilation, compiled_modules);
+        if let Some(cached) = self.check_cache(&cache_key) {
             info!("Using cached binary for {}", compilation.binary_name);
             return Ok(cached);
         }
@@ -32,8 +46,8 @@ impl BinaryCompiler {
 
         let project_dir = temp_dir.path();
 
-        // Generate the binary project
-        self.generate_binary_project(project_dir, compilation)
+        // Generate the binary project with modules
+        self.generate_binary_project_with_modules(project_dir, compilation, compiled_modules)
             .await?;
 
         // Compile the binary
@@ -60,7 +74,7 @@ impl BinaryCompiler {
         };
 
         // Cache the result
-        self.cache.store_binary(&checksum, &compiled_binary)?;
+        self.cache.store_binary(&cache_key, &compiled_binary)?;
 
         info!(
             "Compilation completed for {} in {:?}",
@@ -165,18 +179,38 @@ impl BinaryCompiler {
         project_dir: &Path,
         compilation: &BinaryCompilation,
     ) -> Result<()> {
-        info!("Generating binary project in {:?}", project_dir);
+        self.generate_binary_project_with_modules(project_dir, compilation, &[])
+            .await
+    }
+
+    async fn generate_binary_project_with_modules(
+        &self,
+        project_dir: &Path,
+        compilation: &BinaryCompilation,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<()> {
+        info!(
+            "Generating binary project in {:?} with {} modules",
+            project_dir,
+            compiled_modules.len()
+        );
 
         // Create project structure
         fs::create_dir_all(project_dir.join("src")).await?;
 
-        // Generate Cargo.toml
-        let cargo_toml = self.generate_cargo_toml(compilation)?;
+        // Generate Cargo.toml with module dependencies
+        let cargo_toml = self.generate_cargo_toml_with_modules(compilation, compiled_modules)?;
         fs::write(project_dir.join("Cargo.toml"), cargo_toml).await?;
 
-        // Generate main.rs
-        let main_rs = self.generate_main_rs(compilation)?;
+        // Generate main.rs with module integration
+        let main_rs = self.generate_main_rs_with_modules(compilation, compiled_modules)?;
         fs::write(project_dir.join("src").join("main.rs"), main_rs).await?;
+
+        // Write module files
+        if !compiled_modules.is_empty() {
+            self.write_module_files(project_dir, compiled_modules)
+                .await?;
+        }
 
         // Write embedded files
         self.write_embedded_files(project_dir, &compilation.embedded_data.static_files)
@@ -375,6 +409,129 @@ async fn main() -> Result<()> {{
         let mut hasher = Sha256::new();
         hasher.update(data);
         format!("{:x}", hasher.finalize())
+    }
+
+    fn calculate_compilation_checksum(
+        &self,
+        compilation: &BinaryCompilation,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> String {
+        let mut hasher = Sha256::new();
+        hasher.update(compilation.checksum.as_bytes());
+
+        // Include module checksums
+        for module in compiled_modules {
+            hasher.update(module.spec.name.as_bytes());
+            if let Some(version) = &module.spec.version {
+                hasher.update(version.as_bytes());
+            }
+            if let Some(checksum) = &module.spec.checksum {
+                hasher.update(checksum.as_bytes());
+            }
+            // Include a hash of the compiled code
+            let mut code_hasher = Sha256::new();
+            code_hasher.update(module.compiled_code.as_bytes());
+            hasher.update(&code_hasher.finalize());
+        }
+
+        format!("{:x}", hasher.finalize())
+    }
+
+    fn generate_cargo_toml_with_modules(
+        &self,
+        compilation: &BinaryCompilation,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<String> {
+        let mut cargo_toml = format!(
+            r#"
+[package]
+name = "{}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = {{ version = "1", features = ["derive"] }}
+serde_json = "1"
+tokio = {{ version = "1", features = ["full"] }}
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+async-trait = "0.1"
+"#,
+            compilation.binary_name
+        );
+
+        // Add module-specific dependencies (simplified for now)
+        let mut additional_deps = std::collections::HashSet::new();
+        for module in compiled_modules {
+            // Add common dependencies based on module type
+            match &module.spec.source {
+                crate::execution::plan::ModuleSource::Http { .. } => {
+                    additional_deps
+                        .insert("reqwest = { version = \"0.11\", features = [\"json\"] }");
+                }
+                crate::execution::plan::ModuleSource::File { .. } => {
+                    additional_deps.insert("walkdir = \"2.4\"");
+                }
+                _ => {}
+            }
+        }
+
+        for dep in additional_deps {
+            cargo_toml.push_str(dep);
+            cargo_toml.push('\n');
+        }
+
+        Ok(cargo_toml)
+    }
+
+    fn generate_main_rs_with_modules(
+        &self,
+        compilation: &BinaryCompilation,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<String> {
+        // Use the runtime template generator for consistency
+        let template_generator = crate::compiler::RuntimeTemplateGenerator::new()?;
+
+        // Convert execution plan
+        let execution_plan: crate::execution::ExecutionPlan =
+            serde_json::from_str(&compilation.embedded_data.execution_plan).map_err(|e| {
+                DeployError::TemplateGeneration(format!("Failed to parse execution plan: {e}"))
+            })?;
+
+        let main_rs = template_generator.generate_main_rs_with_modules(
+            &execution_plan,
+            &compilation.embedded_data.runtime_config,
+            compiled_modules,
+        )?;
+
+        Ok(main_rs)
+    }
+
+    async fn write_module_files(
+        &self,
+        project_dir: &Path,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<()> {
+        let modules_dir = project_dir.join("src").join("modules");
+        fs::create_dir_all(&modules_dir).await?;
+
+        // Write each compiled module as a separate file
+        for (i, module) in compiled_modules.iter().enumerate() {
+            let module_file = modules_dir.join(format!("module_{}.rs", i));
+            fs::write(&module_file, &module.compiled_code).await?;
+        }
+
+        // Write module index file
+        let mut mod_rs = String::new();
+        for i in 0..compiled_modules.len() {
+            mod_rs.push_str(&format!("pub mod module_{};\n", i));
+        }
+
+        fs::write(modules_dir.join("mod.rs"), mod_rs).await?;
+
+        debug!("Module files written successfully");
+        Ok(())
     }
 }
 

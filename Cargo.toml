@@ -41,6 +41,8 @@ shell-words = "1.1"
 hostname = "0.3"
 futures = "0.3"
 reqwest = { version = "0.11", features = ["json"] }
+git2 = "0.18"
+walkdir = "2.4"
 
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]

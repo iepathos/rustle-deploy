@@ -29,6 +29,14 @@ mod runtime {
     {{runtime_code}}
 }
 
+{{#if has_custom_modules}}
+mod compiled_modules {
+    use super::runtime;
+    
+    {{module_registry_code}}
+}
+{{/if}}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
@@ -47,6 +55,12 @@ async fn main() -> Result<()> {
     
     // Create and run executor
     let mut executor = runtime::LocalExecutor::new(runtime_config);
+    
+    {{#if has_custom_modules}}
+    // Register compiled modules
+    compiled_modules::register_compiled_modules(executor.module_registry_mut());
+    {{/if}}
+    
     let result = executor.execute_plan(execution_plan).await
         .context("Failed to execute plan")?;
     

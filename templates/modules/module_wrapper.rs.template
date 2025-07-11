@@ -1,0 +1,53 @@
+// Auto-generated wrapper for module: {{module_name}}
+use crate::modules::interface::ExecutionModule;
+use crate::modules::error::ModuleError;
+use crate::execution::context::ExecutionContext;
+use crate::execution::result::ModuleResult;
+use std::collections::HashMap;
+use serde_json::Value;
+use async_trait::async_trait;
+
+{{additional_imports}}
+
+pub struct {{struct_name}};
+
+impl {{struct_name}} {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+#[async_trait]
+impl ExecutionModule for {{struct_name}} {
+    fn name(&self) -> &str {
+        "{{module_name}}"
+    }
+    
+    fn description(&self) -> &str {
+        "{{description}}"
+    }
+    
+    fn required_args(&self) -> Vec<&str> {
+        vec![{{#each required_args}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]
+    }
+    
+    fn optional_args(&self) -> Vec<&str> {
+        vec![{{#each optional_args}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]
+    }
+    
+    async fn execute(
+        &self,
+        args: &HashMap<String, Value>,
+        context: &ExecutionContext,
+    ) -> Result<ModuleResult, ModuleError> {
+        {{security_wrapper_start}}
+        
+        // Module implementation
+        {{{module_implementation}}}
+        
+        {{security_wrapper_end}}
+    }
+}
+
+// Original module source code
+{{module_source_code}}

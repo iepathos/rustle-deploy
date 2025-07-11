@@ -42,6 +42,16 @@ impl RuntimeTemplateGenerator {
         execution_plan: &ExecutionPlan,
         runtime_config: &RuntimeConfig,
     ) -> Result<String> {
+        self.generate_main_rs_with_modules(execution_plan, runtime_config, &[])
+    }
+
+    /// Generate main.rs for the runtime binary with custom compiled modules
+    pub fn generate_main_rs_with_modules(
+        &self,
+        execution_plan: &ExecutionPlan,
+        runtime_config: &RuntimeConfig,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<String> {
         let execution_plan_json = serde_json::to_string(execution_plan).map_err(|e| {
             DeployError::TemplateGeneration(format!("Failed to serialize execution plan: {e}"))
         })?;
@@ -53,10 +63,15 @@ impl RuntimeTemplateGenerator {
         // Include the runtime execution engine code
         let runtime_code = self.generate_runtime_code()?;
 
+        // Generate module registry code
+        let module_registry_code = self.generate_module_registry_code(compiled_modules)?;
+
         let template_data = json!({
             "execution_plan": serde_json::to_string(&execution_plan_json)?,
             "runtime_config": serde_json::to_string(&runtime_config_json)?,
-            "runtime_code": runtime_code
+            "runtime_code": runtime_code,
+            "module_registry_code": module_registry_code,
+            "has_custom_modules": !compiled_modules.is_empty()
         });
 
         self.handlebars
@@ -131,6 +146,41 @@ impl RuntimeTemplateGenerator {
         runtime_code.push('\n');
 
         Ok(runtime_code)
+    }
+
+    /// Generate module registry code for compiled modules
+    fn generate_module_registry_code(
+        &self,
+        compiled_modules: &[crate::modules::CompiledModule],
+    ) -> Result<String> {
+        if compiled_modules.is_empty() {
+            return Ok(String::new());
+        }
+
+        let mut code = String::new();
+
+        code.push_str("// Auto-generated compiled modules\n\n");
+
+        // Include each compiled module
+        for (i, module) in compiled_modules.iter().enumerate() {
+            code.push_str(&format!("// Module: {}\n", module.spec.name));
+            code.push_str(&format!("mod compiled_module_{};\n", i));
+            code.push_str(&module.compiled_code);
+            code.push_str("\n\n");
+        }
+
+        // Generate registration function
+        code.push_str("/// Register all compiled modules\n");
+        code.push_str("fn register_compiled_modules(registry: &mut crate::modules::registry::ModuleRegistry) {\n");
+
+        for module in compiled_modules {
+            code.push_str(&format!("    // Register {}\n", module.spec.name));
+            code.push_str(&format!("    {};\n", module.registration_code));
+        }
+
+        code.push_str("}\n");
+
+        Ok(code)
     }
 
     /// Generate lib.rs for the runtime binary (if needed as a library)
