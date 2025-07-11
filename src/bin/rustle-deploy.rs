@@ -1,29 +1,33 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
-use rustle_deploy::{DeploymentConfig, DeploymentManager};
+use clap::Parser;
 use std::path::PathBuf;
 use tracing::info;
 
 #[derive(Parser)]
 #[command(name = "rustle-deploy")]
-#[command(about = "Compile and deploy optimized execution binaries")]
+#[command(about = "Zero-infrastructure Ansible replacement with binary deployment optimization")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-
-    /// Path to execution plan file (or stdin if -)
+struct RustleDeployCli {
+    /// Execution plan JSON file from rustle-plan (or stdin if -)
     execution_plan: Option<PathBuf>,
 
     /// Inventory file with target host information
     #[arg(short, long)]
     inventory: Option<PathBuf>,
 
+    /// Check cross-compilation capabilities
+    #[arg(long)]
+    check_capabilities: bool,
+
+    /// Install missing dependencies
+    #[arg(long)]
+    setup: bool,
+
     /// Directory for compiled binaries
     #[arg(short, long, default_value = "./target")]
     output_dir: PathBuf,
 
-    /// Target architecture (auto-detect from inventory)
+    /// Target architecture (auto-detect from inventory/plan)
     #[arg(short, long)]
     target: Option<String>,
 
@@ -47,89 +51,22 @@ struct Cli {
     #[arg(long)]
     compile_only: bool,
 
-    /// Remove deployed binaries from targets
-    #[arg(long)]
-    cleanup: bool,
-
-    /// Parallel compilation jobs
-    #[arg(long, default_value_t = num_cpus::get())]
-    parallel: usize,
-
-    /// Deployment timeout per host
-    #[arg(long, default_value_t = 120)]
-    timeout: u64,
-
-    /// Suffix for binary names
-    #[arg(long)]
-    binary_suffix: Option<String>,
-
-    /// Strip debug symbols from binaries
-    #[arg(long)]
-    strip_symbols: bool,
-
-    /// Compress binaries before deployment
-    #[arg(long)]
-    compress: bool,
-
-    /// Verify binary integrity after deployment
-    #[arg(long)]
-    verify: bool,
-
-    /// Rollback to previous binary version
-    #[arg(long)]
-    rollback: bool,
-
-    /// List current deployments on targets
-    #[arg(long)]
-    list_deployments: bool,
+    /// Optimization mode
+    #[arg(long, default_value = "auto")]
+    optimization: String,
 
     /// Enable verbose output
     #[arg(short, long)]
     verbose: bool,
 
-    /// Show what would be compiled/deployed
+    /// Show what would be deployed without executing
     #[arg(long)]
     dry_run: bool,
 }
 
-#[derive(Subcommand)]
-enum Commands {
-    /// Compile execution plans into optimized binaries
-    Compile {
-        /// Execution plan file
-        plan: PathBuf,
-        /// Output directory
-        #[arg(short, long, default_value = "./target")]
-        output: PathBuf,
-    },
-    /// Deploy compiled binaries to target hosts
-    Deploy {
-        /// Deployment plan file
-        plan: PathBuf,
-        /// Inventory file
-        #[arg(short, long)]
-        inventory: PathBuf,
-    },
-    /// Verify deployed binaries
-    Verify {
-        /// Deployment plan file
-        plan: PathBuf,
-    },
-    /// Clean up deployed binaries
-    Cleanup {
-        /// Deployment plan file
-        plan: PathBuf,
-    },
-    /// Rollback to previous deployment
-    Rollback {
-        /// Deployment ID to rollback
-        deployment_id: String,
-    },
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    let cli = Cli::parse();
+    let cli = RustleDeployCli::parse();
 
     // Initialize tracing
     let level = if cli.verbose {
@@ -142,117 +79,540 @@ async fn main() -> Result<()> {
 
     info!("Starting rustle-deploy v{}", env!("CARGO_PKG_VERSION"));
 
-    let config = build_deployment_config(&cli)?;
-    let manager = DeploymentManager::new(config);
+    if cli.check_capabilities {
+        check_capabilities().await?;
+    } else if cli.setup {
+        run_setup().await?;
+    } else if let Some(ref execution_plan) = cli.execution_plan {
+        run_deployment(execution_plan.clone(), &cli).await?;
+    } else {
+        show_usage();
+    }
 
-    match cli.command {
-        Some(Commands::Compile {
-            ref plan,
-            ref output,
-        }) => {
-            info!("Compiling execution plan: {:?}", plan);
-            compile_command(&manager, plan.clone(), output.clone(), &cli).await?;
+    Ok(())
+}
+
+async fn check_capabilities() -> Result<()> {
+    println!("🔧 Zero-Infrastructure Cross-Compilation Capabilities");
+    println!("===================================================");
+
+    // Basic capability detection without complex types
+    let rust_available = check_rust().await;
+    let zig_available = check_zig().await;
+    let zigbuild_available = check_zigbuild().await;
+
+    let capability_level = match (rust_available, zig_available, zigbuild_available) {
+        (true, true, true) => "Full",
+        (true, _, true) => "Limited",
+        (true, _, _) => "Minimal",
+        _ => "Insufficient",
+    };
+
+    match capability_level {
+        "Full" => {
+            println!("✅ Status: Fully Ready - All cross-compilation features available");
+            println!("  🚀 Zig + cargo-zigbuild available for all targets");
         }
-        Some(Commands::Deploy {
-            ref plan,
-            ref inventory,
-        }) => {
-            info!("Deploying binaries from plan: {:?}", plan);
-            deploy_command(&manager, plan.clone(), inventory.clone(), &cli).await?;
+        "Limited" => {
+            println!("⚡ Status: Mostly Ready - Some cross-compilation available");
+            println!("  🔧 Rust + cargo-zigbuild available for cross-compilation");
         }
-        Some(Commands::Verify { plan }) => {
-            info!("Verifying deployment: {:?}", plan);
-            verify_command(&manager, plan).await?;
+        "Minimal" => {
+            println!("⚠️  Status: Basic Ready - Native compilation only");
+            println!("  🏠 Only native target compilation available");
         }
-        Some(Commands::Cleanup { plan }) => {
-            info!("Cleaning up deployment: {:?}", plan);
-            cleanup_command(&manager, plan).await?;
-        }
-        Some(Commands::Rollback { deployment_id }) => {
-            info!("Rolling back deployment: {}", deployment_id);
-            rollback_command(&manager, deployment_id).await?;
-        }
-        None => {
-            // Handle legacy command-line interface
-            if let Some(ref execution_plan) = cli.execution_plan {
-                handle_legacy_interface(&manager, execution_plan.clone(), &cli).await?;
-            } else {
-                eprintln!("Error: No execution plan provided. Use --help for usage information.");
-                std::process::exit(1);
-            }
+        _ => {
+            println!("❌ Status: Not Ready - Missing essential components");
+            println!("  💡 Run --setup to install required components");
         }
     }
 
-    info!("rustle-deploy completed successfully");
+    println!();
+    println!("📦 Component Status:");
+
+    if rust_available {
+        let version = get_rust_version()
+            .await
+            .unwrap_or_else(|| "unknown".to_string());
+        println!("  ✅ Rust: {version}");
+    } else {
+        println!("  ❌ Rust: Not found");
+    }
+
+    println!(
+        "  {} Zig: {}",
+        if zig_available { "✅" } else { "❌" },
+        if zig_available {
+            "Available"
+        } else {
+            "Not found"
+        }
+    );
+
+    println!(
+        "  {} cargo-zigbuild: {}",
+        if zigbuild_available { "✅" } else { "❌" },
+        if zigbuild_available {
+            "Available"
+        } else {
+            "Not found"
+        }
+    );
+
+    println!();
+    let available_targets =
+        get_available_targets(rust_available, zig_available, zigbuild_available);
+    println!("🎯 Available Targets ({}):", available_targets.len());
+    for target in &available_targets {
+        println!("  • {target}");
+    }
+
+    if capability_level != "Full" {
+        println!();
+        println!("💡 Recommendations:");
+        if !rust_available {
+            println!("  • Install Rust toolchain");
+            println!("    Command: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh");
+        }
+        if !zig_available {
+            println!("  • Install Zig for enhanced cross-compilation");
+            println!("    Visit: https://ziglang.org/download/");
+        }
+        if !zigbuild_available && rust_available {
+            println!("  • Install cargo-zigbuild");
+            println!("    Command: cargo install cargo-zigbuild");
+        }
+    }
+
     Ok(())
 }
 
-fn build_deployment_config(cli: &Cli) -> Result<DeploymentConfig> {
-    let cache_dir = cli.cache_dir.clone().unwrap_or_else(|| {
-        dirs::cache_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("rustle")
-            .join("cache")
-    });
+async fn run_setup() -> Result<()> {
+    println!("🚀 rustle-deploy Zero-Infrastructure Setup");
+    println!("==========================================");
 
-    Ok(DeploymentConfig {
-        cache_dir,
-        output_dir: cli.output_dir.clone(),
-        parallel_jobs: cli.parallel,
-        default_timeout_secs: cli.timeout,
-        verify_deployments: cli.verify,
-        compression: cli.compress,
-        strip_symbols: cli.strip_symbols,
-        binary_size_limit_mb: 50, // Default from spec
+    println!("📋 Checking current setup...");
+    let rust_available = check_rust().await;
+    let zig_available = check_zig().await;
+    let zigbuild_available = check_zigbuild().await;
+
+    if rust_available && zig_available && zigbuild_available {
+        println!("✅ Your setup is already fully optimized!");
+        return Ok(());
+    }
+
+    println!("🔧 Installing missing components...");
+
+    // Try to install cargo-zigbuild if missing
+    if !zigbuild_available && rust_available {
+        println!("📦 Installing cargo-zigbuild...");
+        match install_zigbuild().await {
+            Ok(()) => println!("✅ cargo-zigbuild installed successfully"),
+            Err(e) => println!("❌ Failed to install cargo-zigbuild: {e}"),
+        }
+    } else if !rust_available {
+        println!("⚠️  Rust is required before installing cargo-zigbuild");
+        println!("   Please install Rust first: https://rustup.rs/");
+    }
+
+    if !zig_available {
+        println!("📦 Zig installation required for full cross-compilation support");
+        println!("   Please install Zig manually:");
+        println!("   • Visit: https://ziglang.org/download/");
+        println!("   • Or use your package manager:");
+        println!("     - Ubuntu/Debian: apt install zig");
+        println!("     - macOS: brew install zig");
+        println!("     - Windows: Download from ziglang.org");
+    }
+
+    println!();
+    println!("✅ Setup completed! Run --check-capabilities to verify.");
+
+    Ok(())
+}
+
+async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> Result<()> {
+    println!("🚀 rustle-deploy: Zero-Infrastructure Deployment");
+    println!("==============================================");
+
+    // Parse execution plan from rustle-plan JSON
+    let execution_plan = if execution_plan_path.to_string_lossy() == "-" {
+        println!("📖 Execution Plan: <stdin>");
+        parse_execution_plan_from_stdin().await?
+    } else {
+        println!("📖 Execution Plan: {execution_plan_path:?}");
+        parse_execution_plan_from_file(&execution_plan_path).await?
+    };
+
+    if let Some(ref inventory) = cli.inventory {
+        println!("📋 Inventory: {inventory:?}");
+    } else {
+        println!("📋 Inventory: <embedded in execution plan>");
+    }
+
+    println!("⚙️  Optimization: {}", cli.optimization);
+    println!("📁 Output Directory: {:?}", cli.output_dir);
+
+    if cli.dry_run {
+        println!("🔍 DRY RUN MODE - No actual deployment will occur");
+    }
+
+    println!();
+
+    // Analyze the execution plan
+    analyze_execution_plan(&execution_plan).await?;
+
+    // Check capabilities
+    let rust_available = check_rust().await;
+    let zig_available = check_zig().await;
+    let zigbuild_available = check_zigbuild().await;
+
+    let capability_level = match (rust_available, zig_available, zigbuild_available) {
+        (true, true, true) => "Full",
+        (true, _, true) => "Limited",
+        (true, _, _) => "Minimal",
+        _ => "Insufficient",
+    };
+
+    println!("🛠️  Compilation Strategy:");
+    match capability_level {
+        "Full" => {
+            println!("  🚀 Full optimization available - using Zig cross-compilation");
+        }
+        "Limited" => {
+            println!(
+                "  ⚡ Limited optimization available - using cargo-zigbuild cross-compilation"
+            );
+        }
+        "Minimal" => {
+            println!("  ⚠️  Minimal optimization - native compilation only");
+        }
+        _ => {
+            println!("  ❌ Insufficient setup - falling back to SSH deployment only");
+            println!("     Run --setup to enable binary optimization");
+        }
+    }
+
+    println!();
+    let available_targets =
+        get_available_targets(rust_available, zig_available, zigbuild_available);
+    println!("📊 Deployment Analysis:");
+    println!("  • Available targets: {}", available_targets.len());
+    println!(
+        "  • Binary deployment hosts: {}",
+        execution_plan.binary_deployment_hosts
+    );
+    println!(
+        "  • SSH fallback hosts: {}",
+        execution_plan.ssh_fallback_hosts
+    );
+    println!("  • Total tasks: {}", execution_plan.total_tasks);
+    println!(
+        "  • Estimated performance gain: {}x",
+        execution_plan.estimated_speedup
+    );
+
+    if let Some(compilation_time) = execution_plan.estimated_compilation_time {
+        println!("  • Estimated compilation time: {compilation_time:?}");
+    }
+
+    if cli.dry_run {
+        println!();
+        println!("✅ Dry run completed successfully");
+        println!(
+            "   This deployment would use {} deployment strategy",
+            match capability_level {
+                "Full" => "binary optimization with Zig cross-compilation",
+                "Limited" => "hybrid binary/SSH with cargo-zigbuild",
+                "Minimal" => "hybrid binary/SSH with native compilation",
+                _ => "SSH fallback only",
+            }
+        );
+
+        if execution_plan.binary_deployment_hosts > 0 {
+            println!(
+                "   Binary deployment would be used for {} hosts",
+                execution_plan.binary_deployment_hosts
+            );
+        }
+        if execution_plan.ssh_fallback_hosts > 0 {
+            println!(
+                "   SSH fallback would be used for {} hosts",
+                execution_plan.ssh_fallback_hosts
+            );
+        }
+    } else if cli.compile_only {
+        println!();
+        println!("🔨 Compilation-only mode");
+        println!("   Binaries would be compiled to: {:?}", cli.output_dir);
+        println!("   ⚠️  Actual compilation not yet implemented");
+    } else if cli.deploy_only {
+        println!();
+        println!("🚀 Deploy-only mode");
+        println!("   Deploying existing binaries from: {:?}", cli.output_dir);
+        println!("   ⚠️  Actual deployment not yet implemented");
+    } else {
+        println!();
+        println!("⚠️  Full compile and deploy not yet implemented");
+        println!("   Currently showing execution plan analysis only");
+        println!("   Use --dry-run to see deployment planning");
+        println!("   Use --compile-only to compile binaries only");
+        println!("   Use --deploy-only to deploy existing binaries");
+    }
+
+    Ok(())
+}
+
+fn show_usage() {
+    println!("rustle-deploy: Zero-infrastructure binary compiler and deployment manager");
+    println!();
+    println!("Usage:");
+    println!("  rustle-deploy <execution-plan.json>                # Compile and deploy");
+    println!("  rustle-deploy <execution-plan.json> --dry-run      # Show deployment plan");
+    println!("  rustle-deploy <execution-plan.json> --compile-only # Compile binaries only");
+    println!("  rustle-deploy <execution-plan.json> --deploy-only  # Deploy existing binaries");
+    println!("  rustle-deploy --check-capabilities                 # Check setup");
+    println!("  rustle-deploy --setup                              # Install dependencies");
+    println!();
+    println!("Input from rustle-plan:");
+    println!("  rustle-plan playbook.yml -i inventory.yml | rustle-deploy -");
+    println!("  rustle-plan playbook.yml -i inventory.yml --output plan.json");
+    println!("  rustle-deploy plan.json");
+    println!();
+    println!("Examples:");
+    println!("  rustle-deploy execution_plan.json --dry-run");
+    println!("  rustle-deploy execution_plan.json -o ./binaries --compile-only");
+    println!("  rustle-deploy execution_plan.json --optimization=aggressive");
+    println!();
+    println!("For more options, use --help");
+}
+
+// Helper functions for capability detection (same as before)
+
+async fn check_rust() -> bool {
+    tokio::process::Command::new("rustc")
+        .arg("--version")
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn check_zig() -> bool {
+    tokio::process::Command::new("zig")
+        .arg("version")
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn check_zigbuild() -> bool {
+    tokio::process::Command::new("cargo")
+        .args(["zigbuild", "--help"])
+        .output()
+        .await
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+async fn get_rust_version() -> Option<String> {
+    let output = tokio::process::Command::new("rustc")
+        .arg("--version")
+        .output()
+        .await
+        .ok()?;
+
+    if output.status.success() {
+        let version_output = String::from_utf8_lossy(&output.stdout);
+        version_output
+            .split_whitespace()
+            .nth(1)
+            .map(|s| s.to_string())
+    } else {
+        None
+    }
+}
+
+async fn install_zigbuild() -> Result<()> {
+    let output = tokio::process::Command::new("cargo")
+        .args(["install", "cargo-zigbuild"])
+        .output()
+        .await?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(anyhow::anyhow!("Installation failed: {}", stderr))
+    }
+}
+
+fn get_available_targets(
+    rust_available: bool,
+    zig_available: bool,
+    zigbuild_available: bool,
+) -> Vec<String> {
+    let mut targets = Vec::new();
+
+    if rust_available {
+        // Always include native target
+        let native_target = get_native_target();
+        targets.push(native_target.to_string());
+
+        if zig_available && zigbuild_available {
+            // Add all Zig-supported targets
+            targets.extend(
+                [
+                    "x86_64-unknown-linux-gnu",
+                    "aarch64-unknown-linux-gnu",
+                    "x86_64-unknown-linux-musl",
+                    "aarch64-unknown-linux-musl",
+                    "x86_64-apple-darwin",
+                    "aarch64-apple-darwin",
+                    "x86_64-pc-windows-gnu",
+                    "wasm32-wasi",
+                ]
+                .iter()
+                .map(|s| s.to_string()),
+            );
+        } else if zigbuild_available {
+            // Add common cross-compilation targets
+            targets.extend(
+                [
+                    "x86_64-unknown-linux-gnu",
+                    "aarch64-unknown-linux-gnu",
+                    "x86_64-apple-darwin",
+                    "aarch64-apple-darwin",
+                ]
+                .iter()
+                .map(|s| s.to_string()),
+            );
+        }
+    }
+
+    // Remove duplicates and sort
+    targets.sort();
+    targets.dedup();
+    targets
+}
+
+fn get_native_target() -> &'static str {
+    match (std::env::consts::ARCH, std::env::consts::OS) {
+        ("x86_64", "linux") => "x86_64-unknown-linux-gnu",
+        ("aarch64", "linux") => "aarch64-unknown-linux-gnu",
+        ("x86_64", "macos") => "x86_64-apple-darwin",
+        ("aarch64", "macos") => "aarch64-apple-darwin",
+        ("x86_64", "windows") => "x86_64-pc-windows-msvc",
+        _ => "unknown-unknown-unknown",
+    }
+}
+
+// Execution plan parsing and analysis
+
+#[derive(Debug)]
+struct ExecutionPlanSummary {
+    total_tasks: u32,
+    binary_deployment_hosts: usize,
+    ssh_fallback_hosts: usize,
+    estimated_speedup: f32,
+    estimated_compilation_time: Option<std::time::Duration>,
+    strategy: String,
+}
+
+async fn parse_execution_plan_from_file(path: &std::path::Path) -> Result<ExecutionPlanSummary> {
+    let content = tokio::fs::read_to_string(path).await?;
+    parse_execution_plan_json(&content)
+}
+
+async fn parse_execution_plan_from_stdin() -> Result<ExecutionPlanSummary> {
+    use tokio::io::{self, AsyncReadExt};
+    let mut stdin = io::stdin();
+    let mut content = String::new();
+    stdin.read_to_string(&mut content).await?;
+    parse_execution_plan_json(&content)
+}
+
+fn parse_execution_plan_json(content: &str) -> Result<ExecutionPlanSummary> {
+    // Parse the JSON to extract key information for analysis
+    let json: serde_json::Value = serde_json::from_str(content)?;
+
+    let total_tasks = json["total_tasks"].as_u64().unwrap_or(0) as u32;
+
+    // Count binary deployment opportunities
+    let empty_vec = Vec::new();
+    let binary_deployments = json["binary_deployments"].as_array().unwrap_or(&empty_vec);
+    let binary_deployment_hosts = binary_deployments
+        .iter()
+        .map(|deployment| {
+            let empty_hosts = Vec::new();
+            deployment["hosts"].as_array().unwrap_or(&empty_hosts).len()
+        })
+        .sum();
+
+    // Calculate SSH fallback hosts (total hosts - binary hosts)
+    let empty_hosts = Vec::new();
+    let all_hosts = json["hosts"].as_array().unwrap_or(&empty_hosts).len();
+    let ssh_fallback_hosts = all_hosts.saturating_sub(binary_deployment_hosts);
+
+    // Estimate performance speedup based on binary deployment ratio
+    let binary_ratio = if all_hosts > 0 {
+        binary_deployment_hosts as f32 / all_hosts as f32
+    } else {
+        0.0
+    };
+    let estimated_speedup = 1.0 + (binary_ratio * 4.0); // 1x to 5x speedup
+
+    // Extract strategy from metadata
+    let strategy = json["metadata"]["planning_options"]["strategy"]
+        .as_str()
+        .unwrap_or("Unknown")
+        .to_string();
+
+    // Estimate compilation time (simplified calculation)
+    let estimated_compilation_time = if binary_deployment_hosts > 0 {
+        let base_time = std::time::Duration::from_secs(30); // Base compilation time
+        let per_target_time = std::time::Duration::from_secs(10); // Per target overhead
+        Some(base_time + per_target_time * (binary_deployment_hosts.min(5) as u32))
+    } else {
+        None
+    };
+
+    Ok(ExecutionPlanSummary {
+        total_tasks,
+        binary_deployment_hosts,
+        ssh_fallback_hosts,
+        estimated_speedup,
+        estimated_compilation_time,
+        strategy,
     })
 }
 
-async fn compile_command(
-    _manager: &DeploymentManager,
-    _plan: PathBuf,
-    _output: PathBuf,
-    _cli: &Cli,
-) -> Result<()> {
-    // TODO: Implement compilation
-    info!("Compilation functionality not yet implemented");
-    Ok(())
-}
+async fn analyze_execution_plan(plan: &ExecutionPlanSummary) -> Result<()> {
+    println!("📋 Execution Plan Analysis:");
+    println!("  • Strategy: {}", plan.strategy);
+    println!("  • Total tasks: {}", plan.total_tasks);
+    println!(
+        "  • Total hosts: {}",
+        plan.binary_deployment_hosts + plan.ssh_fallback_hosts
+    );
 
-async fn deploy_command(
-    _manager: &DeploymentManager,
-    _plan: PathBuf,
-    _inventory: PathBuf,
-    _cli: &Cli,
-) -> Result<()> {
-    // TODO: Implement deployment
-    info!("Deployment functionality not yet implemented");
-    Ok(())
-}
+    if plan.binary_deployment_hosts > 0 {
+        println!(
+            "  • Binary deployment targets: {} hosts",
+            plan.binary_deployment_hosts
+        );
+        let binary_ratio = plan.binary_deployment_hosts as f32
+            / (plan.binary_deployment_hosts + plan.ssh_fallback_hosts) as f32;
+        println!("  • Binary deployment ratio: {:.1}%", binary_ratio * 100.0);
+    }
 
-async fn verify_command(_manager: &DeploymentManager, _plan: PathBuf) -> Result<()> {
-    // TODO: Implement verification
-    info!("Verification functionality not yet implemented");
-    Ok(())
-}
+    if plan.ssh_fallback_hosts > 0 {
+        println!(
+            "  • SSH fallback targets: {} hosts",
+            plan.ssh_fallback_hosts
+        );
+    }
 
-async fn cleanup_command(_manager: &DeploymentManager, _plan: PathBuf) -> Result<()> {
-    // TODO: Implement cleanup
-    info!("Cleanup functionality not yet implemented");
-    Ok(())
-}
-
-async fn rollback_command(_manager: &DeploymentManager, _deployment_id: String) -> Result<()> {
-    // TODO: Implement rollback
-    info!("Rollback functionality not yet implemented");
-    Ok(())
-}
-
-async fn handle_legacy_interface(
-    _manager: &DeploymentManager,
-    _execution_plan: PathBuf,
-    _cli: &Cli,
-) -> Result<()> {
-    // TODO: Implement legacy interface for backward compatibility
-    info!("Legacy interface functionality not yet implemented");
     Ok(())
 }

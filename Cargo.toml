@@ -57,6 +57,9 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2.0", features = ["full"] }
 
+# Cross-compilation support
+which = "4.4"
+
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]
 nix = "0.30"
