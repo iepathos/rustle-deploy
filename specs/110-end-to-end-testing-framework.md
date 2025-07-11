@@ -306,6 +306,104 @@ impl ContainerManager {
     
     pub async fn cleanup_all(&mut self) -> Result<()>;
 }
+
+// GitHub Actions specific utilities
+// src/testing/github_actions.rs
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::env;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitHubActionsUtils;
+
+impl GitHubActionsUtils {
+    /// Detect if running in GitHub Actions environment
+    pub fn is_github_actions() -> bool {
+        env::var("GITHUB_ACTIONS").unwrap_or_default() == "true"
+    }
+    
+    /// Get GitHub runner information
+    pub fn get_runner_info() -> Option<GitHubRunnerInfo> {
+        if !Self::is_github_actions() {
+            return None;
+        }
+        
+        Some(GitHubRunnerInfo {
+            runner_os: env::var("RUNNER_OS").unwrap_or_default(),
+            runner_arch: env::var("RUNNER_ARCH").unwrap_or_default(),
+            runner_name: env::var("RUNNER_NAME").unwrap_or_default(),
+            is_github_actions: true,
+        })
+    }
+    
+    /// Set up GitHub Actions specific environment
+    pub async fn setup_github_environment() -> Result<()> {
+        // Set up artifact directories
+        tokio::fs::create_dir_all("test-logs").await?;
+        tokio::fs::create_dir_all("performance-data").await?;
+        
+        // Configure GitHub Actions specific settings
+        if Self::is_github_actions() {
+            println!("::group::Setting up E2E test environment");
+        }
+        
+        Ok(())
+    }
+    
+    /// Generate GitHub Actions step outputs
+    pub fn set_output(name: &str, value: &str) -> Result<()> {
+        if Self::is_github_actions() {
+            println!("::set-output name={}::{}", name, value);
+        }
+        Ok(())
+    }
+    
+    /// Add GitHub Actions annotations
+    pub fn add_annotation(level: &str, message: &str, file: Option<&str>, line: Option<u32>) -> Result<()> {
+        if Self::is_github_actions() {
+            let mut annotation = format!("::{} ::{}", level, message);
+            if let Some(f) = file {
+                annotation.push_str(&format!(" file={}", f));
+            }
+            if let Some(l) = line {
+                annotation.push_str(&format!(" line={}", l));
+            }
+            println!("{}", annotation);
+        }
+        Ok(())
+    }
+    
+    /// Clean up GitHub Actions environment
+    pub async fn cleanup_github_environment() -> Result<()> {
+        if Self::is_github_actions() {
+            println!("::endgroup::");
+        }
+        Ok(())
+    }
+    
+    /// Determine optimal test strategy based on runner
+    pub fn get_optimal_test_strategy() -> TestStrategy {
+        if let Some(runner_info) = Self::get_runner_info() {
+            match runner_info.runner_os.as_str() {
+                "Linux" => TestStrategy::LinuxOptimized,
+                "macOS" => TestStrategy::MacOSOptimized,
+                "Windows" => TestStrategy::WindowsOptimized,
+                _ => TestStrategy::Generic,
+            }
+        } else {
+            TestStrategy::LocalDevelopment
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TestStrategy {
+    LinuxOptimized,      // Use native compilation + containers
+    MacOSOptimized,      // Use native compilation + cross-compilation
+    WindowsOptimized,    // Use native compilation + WSL/containers
+    Generic,             // Generic GitHub runner
+    LocalDevelopment,    // Local development environment
+}
 ```
 
 ### Test Fixture Management
@@ -314,9 +412,11 @@ impl ContainerManager {
 // src/testing/fixtures.rs
 use serde_json::Value;
 use anyhow::Result;
+use crate::testing::github_actions::GitHubActionsUtils;
 
 pub struct TestFixtureManager {
     fixtures_dir: PathBuf,
+    github_fixtures_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -517,13 +617,16 @@ impl PerformanceTester {
 
 ### Phase 4: Integration and Automation
 
-1. **CI/CD Integration**
+1. **GitHub Actions Integration**
 ```yaml
-# GitHub Actions workflow for:
-# - Multi-platform testing
+# Comprehensive GitHub Actions workflows for:
+# - Native multi-platform testing (ubuntu, macos, windows)
+# - Multi-architecture support (x86_64, ARM64)
+# - Matrix testing strategies
 # - Performance regression detection
 # - Artifact collection and reporting
-# - Parallel test execution
+# - Parallel test execution across runners
+# - Cost-effective use of free runner minutes
 ```
 
 2. **Test Reporting and Metrics**
@@ -678,7 +781,11 @@ tokio-test = "0.4"
 tempfile = "3.0"
 uuid = { version = "1.0", features = ["v4"] }
 
-# Docker integration
+# GitHub Actions integration
+octocrab = "0.32"        # GitHub API client (for GitHub Actions integration)
+serde_yaml = "0.9"       # YAML parsing for GitHub Actions workflows
+
+# Docker integration (fallback)
 bollard = "0.14"          # Docker API client
 testcontainers = "0.14"   # Container testing framework
 
@@ -700,6 +807,10 @@ tokio = { version = "1.0", features = ["full"] }
 # Process management
 nix = "0.26"             # Unix process utilities
 winapi = "0.3"           # Windows API bindings
+
+# Environment detection
+which = "4.4"            # Executable detection
+dirs = "5.0"             # Standard directories
 ```
 
 ### Internal Dependencies
@@ -711,10 +822,65 @@ winapi = "0.3"           # Windows API bindings
 
 ### System Dependencies
 
-- **Docker** - For containerized testing environments
+**GitHub Actions Runners (Automatically Available)**:
+- **Rust toolchain** - Pre-installed on all GitHub runners
+- **Git** - Pre-installed for repository operations
+- **Cross-compilation support** - Available through rustup
+- **Container runtime** - Docker available on Linux/Windows runners
+
+**Additional Dependencies (Auto-installed)**:
+- **Cross-compilation toolchains** - Installed via GitHub Actions workflows
+- **Platform-specific tools** - GCC, MSVC, Xcode command line tools
+- **SSH client** - Available on all runner platforms
+
+**Fallback Dependencies (For local development)**:
+- **Docker** - For containerized testing when not on GitHub Actions
 - **SSH client** - For SSH-based deployment testing
-- **Cross-compilation toolchains** - For testing target architectures
-- **Git** - For fixture management and CI/CD integration
+- **Git** - For fixture management
+
+## GitHub Actions Advantages
+
+### Why GitHub Actions for E2E Testing
+
+**Open Source Project Benefits**:
+- **Free runner minutes**: 2,000 minutes/month for public repositories
+- **Native multi-platform support**: Ubuntu, macOS, Windows runners available
+- **Multi-architecture support**: x86_64 and ARM64 (M1) runners
+- **No infrastructure management**: No need to maintain test servers or containers
+- **Parallel execution**: Run tests across multiple platforms simultaneously
+- **Artifact storage**: Automatic storage and sharing of test results
+- **Integration**: Native integration with GitHub repository and PR workflows
+
+### Platform Coverage with GitHub Runners
+
+```yaml
+# Native platform testing without emulation
+matrix:
+  include:
+    # Linux testing
+    - os: ubuntu-latest        # x86_64 Linux
+    - os: ubuntu-latest-arm64  # ARM64 Linux (if available)
+    
+    # macOS testing  
+    - os: macos-latest         # x86_64 macOS
+    - os: macos-latest-arm64   # ARM64 macOS (M1/M2)
+    
+    # Windows testing
+    - os: windows-latest       # x86_64 Windows
+```
+
+### Cost-Effective Testing Strategy
+
+1. **Primary Testing**: Use GitHub Actions runners for comprehensive platform coverage
+2. **Extended Testing**: Use containers for additional Linux distributions
+3. **Performance Testing**: Leverage consistent GitHub runner specs for benchmarking
+4. **Nightly Testing**: Run comprehensive tests during off-peak hours
+
+### Hybrid Approach Benefits
+
+- **GitHub Runners**: Native platform testing, cross-compilation validation
+- **Docker Containers**: Additional Linux distro testing, isolated environments
+- **Combined Coverage**: Maximum platform coverage with minimal infrastructure cost
 
 ## Configuration
 
@@ -727,47 +893,89 @@ default_timeout_seconds = 300
 max_parallel_tests = 4
 cleanup_on_failure = true
 preserve_artifacts = true
+prefer_github_runners = true  # Use GitHub runners when available
+
+[github_actions]
+# GitHub Actions specific configuration
+use_matrix_strategy = true
+max_parallel_jobs = 6        # Respect GitHub's concurrent job limits
+store_artifacts = true
+cache_dependencies = true
+fail_fast = false           # Continue testing other platforms on failure
 
 [docker]
 network_name = "rustle-deploy-e2e"
 image_pull_policy = "IfNotPresent"
 cleanup_containers = true
+# Use containers as fallback when GitHub runners unavailable
+fallback_to_containers = true
 
 [performance]
 baseline_ssh_timeout = 600
 min_improvement_factor = 5.0
 max_binary_size_mb = 50
+benchmark_on_all_platforms = true
 
 [platforms]
-default_targets = [
-    { arch = "x86_64", os = "linux" },
-    { arch = "aarch64", os = "linux" },
-    { arch = "x86_64", os = "macos" },
+# GitHub Actions native runners
+github_runners = [
+    { os = "ubuntu-latest", arch = "x86_64", target = "x86_64-unknown-linux-gnu" },
+    { os = "ubuntu-latest-arm64", arch = "aarch64", target = "aarch64-unknown-linux-gnu" },
+    { os = "macos-latest", arch = "x86_64", target = "x86_64-apple-darwin" },
+    { os = "macos-latest-arm64", arch = "aarch64", target = "aarch64-apple-darwin" },
+    { os = "windows-latest", arch = "x86_64", target = "x86_64-pc-windows-msvc" },
+]
+
+# Fallback container targets
+container_targets = [
+    { arch = "x86_64", os = "linux", image = "ubuntu:22.04" },
+    { arch = "aarch64", os = "linux", image = "arm64v8/ubuntu:22.04" },
 ]
 
 [fixtures]
 fixtures_dir = "tests/fixtures"
 generate_large_scale = true
 max_hosts_for_testing = 100
+# GitHub runner specific fixtures
+github_runner_fixtures = "tests/fixtures/github_runners"
 ```
 
 ### Environment Variables
 
 ```bash
-# Container configuration
+# GitHub Actions detection
+GITHUB_ACTIONS=true          # Set automatically by GitHub Actions
+RUNNER_OS=Linux              # Set automatically: Linux, macOS, Windows
+RUNNER_ARCH=X64              # Set automatically: X64, ARM64
+RUNNER_NAME=GitHub_Actions   # Set automatically
+
+# E2E Testing configuration
+RUSTLE_E2E_USE_GITHUB_RUNNERS=true  # Prefer GitHub runners over containers
+RUSTLE_E2E_MATRIX_TESTING=true      # Enable matrix testing strategy
+RUSTLE_E2E_PARALLEL_JOBS=6          # Max parallel jobs (GitHub limit)
+
+# Container fallback configuration
 RUSTLE_E2E_DOCKER_NETWORK=rustle-deploy-e2e
 RUSTLE_E2E_CONTAINER_TIMEOUT=300
 RUSTLE_E2E_PRESERVE_CONTAINERS=false
+RUSTLE_E2E_FALLBACK_TO_CONTAINERS=true
 
 # Test configuration
 RUSTLE_E2E_PARALLEL_TESTS=4
 RUSTLE_E2E_CLEANUP_ON_FAILURE=true
 RUSTLE_E2E_PERFORMANCE_BASELINE=true
+RUSTLE_E2E_BENCHMARK_ALL_PLATFORMS=true
 
 # Fixture configuration
 RUSTLE_E2E_FIXTURES_DIR=tests/fixtures
+RUSTLE_E2E_GITHUB_FIXTURES_DIR=tests/fixtures/github_runners
 RUSTLE_E2E_GENERATE_FIXTURES=true
 RUSTLE_E2E_MAX_TEST_HOSTS=100
+
+# Artifact and caching
+RUSTLE_E2E_STORE_ARTIFACTS=true
+RUSTLE_E2E_CACHE_DEPENDENCIES=true
+RUSTLE_E2E_ARTIFACT_RETENTION_DAYS=30
 ```
 
 ## Documentation
@@ -778,25 +986,39 @@ RUSTLE_E2E_MAX_TEST_HOSTS=100
 # New binary for E2E testing
 cargo build --bin e2e_test_runner
 
-# Run all E2E tests
-./target/debug/e2e_test_runner --all
+# GitHub Actions native testing
+./target/debug/e2e_test_runner --github-runner --native-platform
+./target/debug/e2e_test_runner --github-runner --matrix-all
 
-# Run specific test categories
-./target/debug/e2e_test_runner --category performance
-./target/debug/e2e_test_runner --category cross-compilation
-./target/debug/e2e_test_runner --category large-scale
+# Platform-specific testing on GitHub runners
+./target/debug/e2e_test_runner --platform ubuntu-latest --arch x86_64
+./target/debug/e2e_test_runner --platform macos-latest-arm64 --arch aarch64
+./target/debug/e2e_test_runner --platform windows-latest --arch x86_64
+
+# Cross-compilation testing
+./target/debug/e2e_test_runner --category cross-compilation --source-platform x86_64
+./target/debug/e2e_test_runner --cross-compile-all --from-github-runner
+
+# Container fallback testing
+./target/debug/e2e_test_runner --category container --fallback-mode
+./target/debug/e2e_test_runner --container-image ubuntu:22.04
+
+# Performance benchmarking
+./target/debug/e2e_test_runner --category performance --benchmark-vs-ssh
+./target/debug/e2e_test_runner --large-scale-test --github-runners-only
 
 # Run with specific fixtures
-./target/debug/e2e_test_runner --fixture simple_plan.json
-./target/debug/e2e_test_runner --fixture large_scale_plan.json
+./target/debug/e2e_test_runner --fixture github_runners/ubuntu_native.json
+./target/debug/e2e_test_runner --fixture github_runners/cross_platform.json
 
-# Generate test reports
-./target/debug/e2e_test_runner --all --report-format json --output results.json
-./target/debug/e2e_test_runner --all --report-format html --output report.html
+# Generate test reports with GitHub Actions integration
+./target/debug/e2e_test_runner --all --report-format json --output results.json --github-actions
+./target/debug/e2e_test_runner --matrix-all --report-format html --output matrix-report.html
 
-# Setup and cleanup
-./target/debug/e2e_test_runner --setup-only
-./target/debug/e2e_test_runner --cleanup-only
+# GitHub Actions specific commands
+./target/debug/e2e_test_runner --detect-runner-info
+./target/debug/e2e_test_runner --setup-github-runner
+./target/debug/e2e_test_runner --cleanup-github-artifacts
 ```
 
 ### Usage Examples
@@ -858,30 +1080,209 @@ println!("Performance improvement: {:.2}x", improvement);
 
 ### Integration Points
 
-1. **CI/CD Integration**
+1. **GitHub Actions Integration**
 ```yaml
-# .github/workflows/e2e-tests.yml
-name: E2E Tests
+# .github/workflows/e2e-matrix.yml
+name: E2E Matrix Testing
 on: [push, pull_request]
 
 jobs:
-  e2e-tests:
-    runs-on: ubuntu-latest
+  # Matrix testing across all supported platforms
+  e2e-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux runners
+          - os: ubuntu-latest
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest-arm64  # If available
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
+          
+          # macOS runners
+          - os: macos-latest
+            arch: x86_64
+            target: x86_64-apple-darwin
+          - os: macos-latest-arm64   # M1 runners
+            arch: aarch64
+            target: aarch64-apple-darwin
+          
+          # Windows runners
+          - os: windows-latest
+            arch: x86_64
+            target: x86_64-pc-windows-msvc
+    
+    runs-on: ${{ matrix.os }}
+    
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
-      - name: Setup Docker
-        uses: docker/setup-buildx-action@v2
-      - name: Run E2E Tests
-        run: |
-          cargo build --bin e2e_test_runner
-          ./target/debug/e2e_test_runner --all --report-format json --output e2e-results.json
-      - name: Upload Results
-        uses: actions/upload-artifact@v3
         with:
-          name: e2e-test-results
-          path: e2e-results.json
+          toolchain: stable
+          target: ${{ matrix.target }}
+          override: true
+      
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      
+      - name: Install Cross-compilation Tools
+        run: |
+          # Platform-specific cross-compilation setup
+          if [[ "${{ matrix.os }}" == "ubuntu"* ]]; then
+            sudo apt-get update
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          elif [[ "${{ matrix.os }}" == "macos"* ]]; then
+            # macOS cross-compilation setup
+            echo "macOS cross-compilation setup"
+          fi
+        shell: bash
+      
+      - name: Build E2E Test Runner
+        run: cargo build --bin e2e_test_runner --target ${{ matrix.target }}
+      
+      - name: Run Native Platform Tests
+        run: |
+          # Test compilation and execution on native platform
+          ./target/${{ matrix.target }}/debug/e2e_test_runner \
+            --category native \
+            --platform ${{ matrix.arch }} \
+            --os ${{ runner.os }} \
+            --report-format json \
+            --output e2e-results-${{ matrix.os }}-${{ matrix.arch }}.json
+        shell: bash
+      
+      - name: Test Cross-compilation
+        run: |
+          # Test cross-compilation to other targets
+          ./target/${{ matrix.target }}/debug/e2e_test_runner \
+            --category cross-compilation \
+            --source-platform ${{ matrix.arch }} \
+            --report-format json \
+            --output cross-compile-results-${{ matrix.os }}-${{ matrix.arch }}.json
+        shell: bash
+      
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            e2e-results-*.json
+            cross-compile-results-*.json
+            test-logs/
+  
+  # Performance benchmarking job
+  performance-benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Run Performance Tests
+        run: |
+          cargo build --bin e2e_test_runner --release
+          ./target/release/e2e_test_runner \
+            --category performance \
+            --benchmark-vs-ssh \
+            --large-scale-test \
+            --report-format json \
+            --output performance-results.json
+      
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-benchmarks
+          path: performance-results.json
+  
+  # Container-based testing for additional coverage
+  container-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container:
+          - ubuntu:22.04
+          - alpine:latest
+          - debian:bullseye
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Run Container Tests
+        run: |
+          # Test binary execution in different container environments
+          cargo build --bin e2e_test_runner
+          ./target/debug/e2e_test_runner \
+            --category container \
+            --container-image ${{ matrix.container }} \
+            --report-format json \
+            --output container-results-$(echo ${{ matrix.container }} | tr ':' '-').json
+      
+      - name: Upload Container Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-results-${{ matrix.container }}
+          path: container-results-*.json
+
+# .github/workflows/e2e-nightly.yml - Comprehensive nightly testing
+name: Nightly E2E Tests
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run at 2 AM UTC daily
+  workflow_dispatch:     # Allow manual triggering
+
+jobs:
+  comprehensive-testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      
+      - name: Run Comprehensive Tests
+        run: |
+          cargo build --bin e2e_test_runner --release
+          # Run all test categories with extended timeouts
+          ./target/release/e2e_test_runner \
+            --all \
+            --large-scale \
+            --stress-test \
+            --timeout 3600 \
+            --report-format html \
+            --output nightly-report.html
+      
+      - name: Upload Comprehensive Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-comprehensive-results
+          path: |
+            nightly-report.html
+            test-logs/
+            performance-data/
 ```
 
 2. **Performance Monitoring**
