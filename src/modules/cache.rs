@@ -259,7 +259,7 @@ impl ModuleCache {
         }
 
         // Read module data
-        let module_content =
+        let _module_content =
             fs::read_to_string(&module_path)
                 .await
                 .map_err(|e| CacheError::IoError {

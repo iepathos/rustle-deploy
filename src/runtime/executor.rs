@@ -400,11 +400,11 @@ impl LocalExecutor {
                         return Ok(module_result);
                     }
                     last_error = Some(ExecutionError::ModuleExecution(
-                        crate::modules::ModuleExecutionError::ExecutionFailed(
-                            module_result
+                        crate::modules::ModuleExecutionError::ExecutionFailed {
+                            message: module_result
                                 .msg
                                 .unwrap_or_else(|| "Task failed".to_string()),
-                        ),
+                        },
                     ));
                 }
                 Ok(Err(e)) => {

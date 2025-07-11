@@ -49,9 +49,12 @@ impl ModuleRegistry {
         args: &ModuleArgs,
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
-        let module = self
-            .get_module(module_name)
-            .ok_or_else(|| ModuleExecutionError::ModuleNotFound(module_name.to_string()))?;
+        let module =
+            self.get_module(module_name)
+                .ok_or_else(|| ModuleExecutionError::ModuleNotFound {
+                    name: module_name.to_string(),
+                    searched_sources: vec!["registry".to_string()],
+                })?;
 
         module.validate_args(args)?;
 

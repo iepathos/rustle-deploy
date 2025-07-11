@@ -75,7 +75,9 @@ impl ExecutionModule for ServiceModule {
             .args
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ModuleExecutionError::InvalidArgs("name is required".to_string()))?;
+            .ok_or_else(|| ModuleExecutionError::InvalidArgs {
+                message: "name is required".to_string(),
+            })?;
 
         let state = args.args.get("state").and_then(|v| v.as_str());
         let enabled = args.args.get("enabled").and_then(|v| v.as_bool());
@@ -87,10 +89,11 @@ impl ExecutionModule for ServiceModule {
                 ModuleExecutionError::UnsupportedPlatform(context.host_info.platform.clone())
             })?;
 
-        let current_status = service_manager
-            .query_service(name)
-            .await
-            .map_err(|e| ModuleExecutionError::ExecutionFailed(e.to_string()))?;
+        let current_status = service_manager.query_service(name).await.map_err(|e| {
+            ModuleExecutionError::ExecutionFailed {
+                message: e.to_string(),
+            }
+        })?;
 
         let mut changed = false;
         let mut actions = Vec::new();
@@ -116,9 +119,9 @@ impl ExecutionModule for ServiceModule {
                     actions.push(target_state.to_string());
                 }
                 _ => {
-                    return Err(ModuleExecutionError::InvalidArgs(format!(
-                        "Invalid state: {target_state}"
-                    )))
+                    return Err(ModuleExecutionError::InvalidArgs {
+                        message: format!("Invalid state: {target_state}"),
+                    })
                 }
             }
         }
@@ -172,7 +175,9 @@ impl ExecutionModule for ServiceModule {
                 "disable" => service_manager.disable_service(name).await,
                 _ => continue,
             }
-            .map_err(|e| ModuleExecutionError::ExecutionFailed(e.to_string()))?;
+            .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                message: e.to_string(),
+            })?;
 
             if !result.success {
                 return Ok(ModuleResult {
@@ -209,7 +214,9 @@ impl ExecutionModule for ServiceModule {
 
     fn validate_args(&self, args: &ModuleArgs) -> Result<(), ValidationError> {
         if !args.args.contains_key("name") {
-            return Err(ValidationError::MissingRequiredArg("name".to_string()));
+            return Err(ValidationError::MissingRequiredArg {
+                arg: "name".to_string(),
+            });
         }
         Ok(())
     }
@@ -223,7 +230,9 @@ impl ExecutionModule for ServiceModule {
             .args
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ModuleExecutionError::InvalidArgs("name is required".to_string()))?;
+            .ok_or_else(|| ModuleExecutionError::InvalidArgs {
+                message: "name is required".to_string(),
+            })?;
 
         Ok(ModuleResult {
             changed: true, // Assume it would change for check mode

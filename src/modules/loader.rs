@@ -1,12 +1,12 @@
 use crate::execution::plan::{ExecutionPlan, ModuleSource, ModuleSpec};
 use crate::modules::cache::ModuleCache;
 use crate::modules::compiler::CodeGenerator;
-use crate::modules::error::{CompileError, ModuleError, ResolveError, ValidationError};
+use crate::modules::error::{CompileError, ModuleError, ValidationError};
 use crate::modules::resolver::{ModuleSourceCode, ModuleSourceResolver};
-use crate::modules::validator::{ModuleValidator, ValidationResult};
+use crate::modules::validator::ModuleValidator;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -115,15 +115,13 @@ impl ModuleCompiler {
                     .resolve(source)
                     .await
                     .map_err(|e| ModuleError::LoadError {
-                        source: format!("{:?}", source),
+                        location: format!("{:?}", source),
                         error: e.to_string(),
                     });
             }
         }
 
-        Err(ModuleError::UnsupportedSource {
-            source: format!("{:?}", source),
-        })
+        Err(ModuleError::UnsupportedSource(format!("{:?}", source)))
     }
 
     pub fn validate_module(&self, module: &LoadedModule) -> Result<(), ValidationError> {
@@ -256,7 +254,7 @@ impl ModuleCompiler {
 
     fn parse_module_manifest(
         &self,
-        source_code: &ModuleSourceCode,
+        _source_code: &ModuleSourceCode,
     ) -> Result<ModuleManifest, ModuleError> {
         // For now, extract from module source code comments
         // TODO: Support proper manifest files

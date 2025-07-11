@@ -1,13 +1,19 @@
 use crate::modules::error::{CompileError, GenerationError};
-use crate::modules::loader::{CompiledModule, LoadedModule, SecurityLevel};
+use crate::modules::loader::{CompiledModule, LoadedModule};
 use anyhow::Result;
 use handlebars::Handlebars;
 use serde_json::json;
-use tracing::{debug, info};
+use tracing::info;
 
 /// Code generator for module compilation
 pub struct CodeGenerator {
     template_engine: Handlebars<'static>,
+}
+
+impl Default for CodeGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CodeGenerator {
@@ -97,7 +103,7 @@ impl CodeGenerator {
         code.push_str("// Auto-generated module registry\n\n");
 
         for (i, _module) in modules.iter().enumerate() {
-            code.push_str(&format!("mod module_{};\n", i));
+            code.push_str(&format!("mod module_{i};\n"));
         }
 
         code.push_str("\n");
@@ -148,7 +154,7 @@ impl CodeGenerator {
         Ok(source)
     }
 
-    fn generate_imports(&self, module: &LoadedModule) -> Result<String, CompileError> {
+    fn generate_imports(&self, _module: &LoadedModule) -> Result<String, CompileError> {
         let mut imports = Vec::new();
 
         // Add common imports (simplified for now)
@@ -175,7 +181,7 @@ impl CodeGenerator {
         Ok(String::new())
     }
 
-    async fn compile_static_data(&self, module: &LoadedModule) -> Result<Vec<u8>, CompileError> {
+    async fn compile_static_data(&self, _module: &LoadedModule) -> Result<Vec<u8>, CompileError> {
         // Compile any static data that needs to be embedded with the module
         // For now, just return empty data
         Ok(Vec::new())
@@ -243,7 +249,7 @@ impl CodeGenerator {
         None
     }
 
-    fn adapt_implementation(&self, implementation: &str, module: &LoadedModule) -> String {
+    fn adapt_implementation(&self, implementation: &str, _module: &LoadedModule) -> String {
         // Adapt the implementation to match our module interface
         let mut adapted = implementation.to_string();
 

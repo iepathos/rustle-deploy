@@ -137,6 +137,19 @@ pub enum Platform {
     NetBSD,
 }
 
+impl std::fmt::Display for Platform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Platform::Linux => write!(f, "Linux"),
+            Platform::MacOS => write!(f, "macOS"),
+            Platform::Windows => write!(f, "Windows"),
+            Platform::FreeBSD => write!(f, "FreeBSD"),
+            Platform::OpenBSD => write!(f, "OpenBSD"),
+            Platform::NetBSD => write!(f, "NetBSD"),
+        }
+    }
+}
+
 /// Module execution result
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModuleResult {

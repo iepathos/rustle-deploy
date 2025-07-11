@@ -134,9 +134,9 @@ impl ModuleValidator {
 
     fn validate_compatibility(
         &self,
-        module: &LoadedModule,
+        _module: &LoadedModule,
     ) -> Result<ValidationResult, ValidationError> {
-        let mut result = ValidationResult::new();
+        let result = ValidationResult::new();
 
         // Skip advanced compatibility checks for now since they're not in the simplified ModuleSpec
         // In production, this information could be extracted from the module manifest or cargo.toml

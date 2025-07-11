@@ -97,9 +97,9 @@ impl PackageManager for ChocolateyPackageManager {
             .await?;
 
         if !output.status.success() {
-            return Err(PackageManagerError::OperationFailed(
-                "Failed to list packages".to_string(),
-            ));
+            return Err(PackageManagerError::OperationFailed {
+                error: "Failed to list packages".to_string(),
+            });
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);

@@ -73,7 +73,9 @@ impl ExecutionModule for PackageModule {
             .args
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ModuleExecutionError::InvalidArgs("name is required".to_string()))?;
+            .ok_or_else(|| ModuleExecutionError::InvalidArgs {
+                message: "name is required".to_string(),
+            })?;
 
         let state = args
             .args
@@ -88,18 +90,19 @@ impl ExecutionModule for PackageModule {
                 ModuleExecutionError::UnsupportedPlatform(context.host_info.platform.clone())
             })?;
 
-        let current_state = package_manager
-            .query_package(name)
-            .await
-            .map_err(|e| ModuleExecutionError::ExecutionFailed(e.to_string()))?;
+        let current_state = package_manager.query_package(name).await.map_err(|e| {
+            ModuleExecutionError::ExecutionFailed {
+                message: e.to_string(),
+            }
+        })?;
 
         let target_state = match state {
             "present" | "installed" | "latest" => PackageState::Present,
             "absent" | "removed" => PackageState::Absent,
             _ => {
-                return Err(ModuleExecutionError::InvalidArgs(format!(
-                    "Invalid state: {state}"
-                )))
+                return Err(ModuleExecutionError::InvalidArgs {
+                    message: format!("Invalid state: {state}"),
+                })
             }
         };
 
@@ -140,14 +143,16 @@ impl ExecutionModule for PackageModule {
         }
 
         let result = match target_state {
-            PackageState::Present => package_manager
-                .install_package(name)
-                .await
-                .map_err(|e| ModuleExecutionError::ExecutionFailed(e.to_string()))?,
-            PackageState::Absent => package_manager
-                .remove_package(name)
-                .await
-                .map_err(|e| ModuleExecutionError::ExecutionFailed(e.to_string()))?,
+            PackageState::Present => package_manager.install_package(name).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: e.to_string(),
+                }
+            })?,
+            PackageState::Absent => package_manager.remove_package(name).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: e.to_string(),
+                }
+            })?,
         };
 
         Ok(ModuleResult {
@@ -166,7 +171,9 @@ impl ExecutionModule for PackageModule {
 
     fn validate_args(&self, args: &ModuleArgs) -> Result<(), ValidationError> {
         if !args.args.contains_key("name") {
-            return Err(ValidationError::MissingRequiredArg("name".to_string()));
+            return Err(ValidationError::MissingRequiredArg {
+                arg: "name".to_string(),
+            });
         }
         Ok(())
     }
@@ -180,7 +187,9 @@ impl ExecutionModule for PackageModule {
             .args
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| ModuleExecutionError::InvalidArgs("name is required".to_string()))?;
+            .ok_or_else(|| ModuleExecutionError::InvalidArgs {
+                message: "name is required".to_string(),
+            })?;
 
         let state = args
             .args

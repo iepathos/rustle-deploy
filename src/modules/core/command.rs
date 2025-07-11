@@ -128,9 +128,9 @@ impl ExecutionModule for CommandModule {
 
     fn validate_args(&self, args: &ModuleArgs) -> Result<(), ValidationError> {
         if !args.args.contains_key("_raw_params") && !args.args.contains_key("cmd") {
-            return Err(ValidationError::MissingRequiredArg(
-                "_raw_params or cmd".to_string(),
-            ));
+            return Err(ValidationError::MissingRequiredArg {
+                arg: "_raw_params or cmd".to_string(),
+            });
         }
         Ok(())
     }
@@ -249,9 +249,9 @@ impl CommandModule {
             }
         }
 
-        Err(ModuleExecutionError::InvalidArgs(
-            "No command specified".to_string(),
-        ))
+        Err(ModuleExecutionError::InvalidArgs {
+            message: "No command specified".to_string(),
+        })
     }
 
     fn build_command(
@@ -260,9 +260,9 @@ impl CommandModule {
         context: &ExecutionContext,
     ) -> Result<Command, ModuleExecutionError> {
         if command.is_empty() {
-            return Err(ModuleExecutionError::InvalidArgs(
-                "Empty command".to_string(),
-            ));
+            return Err(ModuleExecutionError::InvalidArgs {
+                message: "Empty command".to_string(),
+            });
         }
 
         let mut cmd = Command::new(&command[0]);

@@ -10,11 +10,11 @@ pub enum ModuleError {
         searched_sources: Vec<String>,
     },
 
-    #[error("Unsupported module source: {source}")]
-    UnsupportedSource { source: String },
+    #[error("Unsupported module source: {0}")]
+    UnsupportedSource(String),
 
-    #[error("Failed to load module from {source}: {error}")]
-    LoadError { source: String, error: String },
+    #[error("Failed to load module from {location}: {error}")]
+    LoadError { location: String, error: String },
 
     #[error("Module compilation failed: {error}")]
     CompilationError { error: String },
@@ -30,6 +30,12 @@ pub enum ModuleError {
 
     #[error("Invalid module argument: {arg} = {value}")]
     InvalidArg { arg: String, value: String },
+
+    #[error("Invalid arguments: {message}")]
+    InvalidArgs { message: String },
+
+    #[error("Unsupported platform: {0}")]
+    UnsupportedPlatform(crate::modules::interface::Platform),
 
     #[error("Module execution failed: {message}")]
     ExecutionFailed { message: String },
@@ -95,6 +101,16 @@ pub enum ValidationError {
 
     #[error("Circular dependency detected: {chain:?}")]
     CircularDependency { chain: Vec<String> },
+
+    #[error("Missing required argument: {arg}")]
+    MissingRequiredArg { arg: String },
+
+    #[error("Invalid argument value: {arg} = {value} - {reason}")]
+    InvalidArgValue {
+        arg: String,
+        value: String,
+        reason: String,
+    },
 }
 
 /// Errors that can occur during module compilation
@@ -246,6 +262,9 @@ pub enum PackageManagerError {
 
     #[error("Command execution failed: {error}")]
     CommandFailed { error: String },
+
+    #[error("Operation failed: {error}")]
+    OperationFailed { error: String },
 }
 
 /// Service manager specific errors
@@ -268,12 +287,56 @@ pub enum ServiceManagerError {
 
     #[error("Command execution failed: {error}")]
     CommandFailed { error: String },
+
+    #[error("Operation failed: {error}")]
+    OperationFailed { error: String },
 }
 
 impl From<anyhow::Error> for ValidationError {
     fn from(err: anyhow::Error) -> Self {
         ValidationError::CompatibilityError {
             requirement: err.to_string(),
+        }
+    }
+}
+
+// Add From<std::io::Error> implementations for all error types
+impl From<std::io::Error> for ModuleError {
+    fn from(err: std::io::Error) -> Self {
+        ModuleError::ExecutionFailed {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for PackageManagerError {
+    fn from(err: std::io::Error) -> Self {
+        PackageManagerError::CommandFailed {
+            error: err.to_string(),
+        }
+    }
+}
+
+impl From<std::io::Error> for ServiceManagerError {
+    fn from(err: std::io::Error) -> Self {
+        ServiceManagerError::CommandFailed {
+            error: err.to_string(),
+        }
+    }
+}
+
+impl From<shell_words::ParseError> for ModuleError {
+    fn from(err: shell_words::ParseError) -> Self {
+        ModuleError::InvalidArgs {
+            message: err.to_string(),
+        }
+    }
+}
+
+impl From<serde_json::Error> for ModuleError {
+    fn from(err: serde_json::Error) -> Self {
+        ModuleError::ExecutionFailed {
+            message: format!("JSON serialization error: {}", err),
         }
     }
 }
