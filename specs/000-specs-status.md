@@ -8,12 +8,12 @@ This document tracks the status of all specification documents in the project.
 |------|---------|--------|
 | 010 | Rustle Deploy Tool | ✅ Complete |
 | 020 | Execution Plan Integration | ✅ Complete |
+| 030 | Inventory Processing | ✅ Complete |
 
 ## In Progress / Planned Specs
 
 | Spec | Feature | Status |
 |------|---------|--------|
-| 030 | Inventory Parsing | ⬜ Planned |
 | 040 | Runtime Execution Engine | ⬜ Planned |
 | 050 | Module System Integration | ⬜ Planned |
 | 060 | Rustle Plan Output Compatibility | ⬜ Planned |
