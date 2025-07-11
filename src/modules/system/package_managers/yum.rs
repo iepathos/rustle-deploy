@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct YumPackageManager;
 
+impl Default for YumPackageManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl YumPackageManager {
     pub fn new() -> Self {
         Self
@@ -18,7 +24,7 @@ impl YumPackageManager {
 #[async_trait]
 impl PackageManager for YumPackageManager {
     async fn query_package(&self, name: &str) -> Result<PackageState, PackageManagerError> {
-        let output = Command::new("rpm").args(&["-q", name]).output().await?;
+        let output = Command::new("rpm").args(["-q", name]).output().await?;
 
         if output.status.success() {
             Ok(PackageState::Present)
@@ -29,7 +35,7 @@ impl PackageManager for YumPackageManager {
 
     async fn install_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("yum")
-            .args(&["install", "-y", name])
+            .args(["install", "-y", name])
             .output()
             .await?;
 
@@ -43,16 +49,16 @@ impl PackageManager for YumPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} installed successfully", name))
+                Some(format!("Package {name} installed successfully"))
             } else {
-                Some(format!("Failed to install package {}", name))
+                Some(format!("Failed to install package {name}"))
             },
         })
     }
 
     async fn remove_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("yum")
-            .args(&["remove", "-y", name])
+            .args(["remove", "-y", name])
             .output()
             .await?;
 
@@ -66,16 +72,16 @@ impl PackageManager for YumPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} removed successfully", name))
+                Some(format!("Package {name} removed successfully"))
             } else {
-                Some(format!("Failed to remove package {}", name))
+                Some(format!("Failed to remove package {name}"))
             },
         })
     }
 
     async fn list_packages(&self) -> Result<Vec<Package>, PackageManagerError> {
         let output = Command::new("rpm")
-            .args(&["-qa", "--queryformat", "%{NAME} %{VERSION} %{SUMMARY}\\n"])
+            .args(["-qa", "--queryformat", "%{NAME} %{VERSION} %{SUMMARY}\\n"])
             .output()
             .await?;
 

@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct SystemdServiceManager;
 
+impl Default for SystemdServiceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SystemdServiceManager {
     pub fn new() -> Self {
         Self
@@ -19,12 +25,12 @@ impl SystemdServiceManager {
 impl ServiceManager for SystemdServiceManager {
     async fn query_service(&self, name: &str) -> Result<ServiceStatus, ServiceManagerError> {
         let status_output = Command::new("systemctl")
-            .args(&["is-active", name])
+            .args(["is-active", name])
             .output()
             .await?;
 
         let enabled_output = Command::new("systemctl")
-            .args(&["is-enabled", name])
+            .args(["is-enabled", name])
             .output()
             .await?;
 
@@ -52,7 +58,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn start_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["start", name])
+            .args(["start", name])
             .output()
             .await?;
 
@@ -66,7 +72,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn stop_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["stop", name])
+            .args(["stop", name])
             .output()
             .await?;
 
@@ -80,7 +86,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn restart_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["restart", name])
+            .args(["restart", name])
             .output()
             .await?;
 
@@ -94,7 +100,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn reload_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["reload", name])
+            .args(["reload", name])
             .output()
             .await?;
 
@@ -108,7 +114,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn enable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["enable", name])
+            .args(["enable", name])
             .output()
             .await?;
 
@@ -122,7 +128,7 @@ impl ServiceManager for SystemdServiceManager {
 
     async fn disable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("systemctl")
-            .args(&["disable", name])
+            .args(["disable", name])
             .output()
             .await?;
 

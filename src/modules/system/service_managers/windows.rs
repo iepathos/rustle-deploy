@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct WindowsServiceManager;
 
+impl Default for WindowsServiceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WindowsServiceManager {
     pub fn new() -> Self {
         Self
@@ -18,7 +24,7 @@ impl WindowsServiceManager {
 #[async_trait]
 impl ServiceManager for WindowsServiceManager {
     async fn query_service(&self, name: &str) -> Result<ServiceStatus, ServiceManagerError> {
-        let output = Command::new("sc").args(&["query", name]).output().await?;
+        let output = Command::new("sc").args(["query", name]).output().await?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
         let running = stdout.contains("RUNNING");
@@ -31,7 +37,7 @@ impl ServiceManager for WindowsServiceManager {
         };
 
         // Check if service is set to auto-start
-        let config_output = Command::new("sc").args(&["qc", name]).output().await?;
+        let config_output = Command::new("sc").args(["qc", name]).output().await?;
 
         let config_stdout = String::from_utf8_lossy(&config_output.stdout);
         let enabled = if config_stdout.contains("AUTO_START") {
@@ -50,7 +56,7 @@ impl ServiceManager for WindowsServiceManager {
     }
 
     async fn start_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
-        let output = Command::new("sc").args(&["start", name]).output().await?;
+        let output = Command::new("sc").args(["start", name]).output().await?;
 
         Ok(ServiceResult {
             success: output.status.success(),
@@ -61,7 +67,7 @@ impl ServiceManager for WindowsServiceManager {
     }
 
     async fn stop_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
-        let output = Command::new("sc").args(&["stop", name]).output().await?;
+        let output = Command::new("sc").args(["stop", name]).output().await?;
 
         Ok(ServiceResult {
             success: output.status.success(),
@@ -86,7 +92,7 @@ impl ServiceManager for WindowsServiceManager {
 
     async fn enable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("sc")
-            .args(&["config", name, "start=", "auto"])
+            .args(["config", name, "start=", "auto"])
             .output()
             .await?;
 
@@ -100,7 +106,7 @@ impl ServiceManager for WindowsServiceManager {
 
     async fn disable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("sc")
-            .args(&["config", name, "start=", "demand"])
+            .args(["config", name, "start=", "demand"])
             .output()
             .await?;
 

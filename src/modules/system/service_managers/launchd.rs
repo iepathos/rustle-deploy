@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct LaunchdServiceManager;
 
+impl Default for LaunchdServiceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LaunchdServiceManager {
     pub fn new() -> Self {
         Self
@@ -19,7 +25,7 @@ impl LaunchdServiceManager {
 impl ServiceManager for LaunchdServiceManager {
     async fn query_service(&self, name: &str) -> Result<ServiceStatus, ServiceManagerError> {
         let output = Command::new("launchctl")
-            .args(&["list", name])
+            .args(["list", name])
             .output()
             .await?;
 
@@ -39,10 +45,10 @@ impl ServiceManager for LaunchdServiceManager {
 
     async fn start_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("launchctl")
-            .args(&[
+            .args([
                 "load",
                 "-w",
-                &format!("/Library/LaunchDaemons/{}.plist", name),
+                &format!("/Library/LaunchDaemons/{name}.plist"),
             ])
             .output()
             .await?;
@@ -57,10 +63,10 @@ impl ServiceManager for LaunchdServiceManager {
 
     async fn stop_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("launchctl")
-            .args(&[
+            .args([
                 "unload",
                 "-w",
-                &format!("/Library/LaunchDaemons/{}.plist", name),
+                &format!("/Library/LaunchDaemons/{name}.plist"),
             ])
             .output()
             .await?;

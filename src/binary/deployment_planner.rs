@@ -365,7 +365,7 @@ mod tests {
 
         TaskPlan {
             task_id: id.to_string(),
-            name: format!("Test Task {}", id),
+            name: format!("Test Task {id}"),
             module: module.to_string(),
             args: HashMap::new(),
             hosts: vec!["localhost".to_string()],
@@ -384,7 +384,7 @@ mod tests {
     fn test_planner_creation() {
         let _planner = BinaryDeploymentPlanner::new();
         // Test creation succeeds
-        assert!(true);
+        // Test creation succeeds
     }
 
     #[test]

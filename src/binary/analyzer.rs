@@ -317,7 +317,7 @@ mod tests {
     fn test_analyzer_creation() {
         let _analyzer = BinaryCompatibilityAnalyzer::new();
         // Just test that creation succeeds
-        assert!(true);
+        // Test creation succeeds
     }
 
     #[test]

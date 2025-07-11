@@ -53,7 +53,7 @@ impl ExecutionModule for DebugModule {
             if let Some(value) = context.variables.get(var) {
                 format!("{}: {}", var, serde_json::to_string_pretty(value)?)
             } else {
-                format!("{}: VARIABLE IS NOT DEFINED!", var)
+                format!("{var}: VARIABLE IS NOT DEFINED!")
             }
         } else {
             msg.to_string()

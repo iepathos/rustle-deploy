@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct ChocolateyPackageManager;
 
+impl Default for ChocolateyPackageManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ChocolateyPackageManager {
     pub fn new() -> Self {
         Self
@@ -19,7 +25,7 @@ impl ChocolateyPackageManager {
 impl PackageManager for ChocolateyPackageManager {
     async fn query_package(&self, name: &str) -> Result<PackageState, PackageManagerError> {
         let output = Command::new("choco")
-            .args(&["list", "--local-only", name])
+            .args(["list", "--local-only", name])
             .output()
             .await?;
 
@@ -40,7 +46,7 @@ impl PackageManager for ChocolateyPackageManager {
 
     async fn install_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("choco")
-            .args(&["install", name, "-y"])
+            .args(["install", name, "-y"])
             .output()
             .await?;
 
@@ -54,16 +60,16 @@ impl PackageManager for ChocolateyPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} installed successfully", name))
+                Some(format!("Package {name} installed successfully"))
             } else {
-                Some(format!("Failed to install package {}", name))
+                Some(format!("Failed to install package {name}"))
             },
         })
     }
 
     async fn remove_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("choco")
-            .args(&["uninstall", name, "-y"])
+            .args(["uninstall", name, "-y"])
             .output()
             .await?;
 
@@ -77,16 +83,16 @@ impl PackageManager for ChocolateyPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} removed successfully", name))
+                Some(format!("Package {name} removed successfully"))
             } else {
-                Some(format!("Failed to remove package {}", name))
+                Some(format!("Failed to remove package {name}"))
             },
         })
     }
 
     async fn list_packages(&self) -> Result<Vec<Package>, PackageManagerError> {
         let output = Command::new("choco")
-            .args(&["list", "--local-only"])
+            .args(["list", "--local-only"])
             .output()
             .await?;
 

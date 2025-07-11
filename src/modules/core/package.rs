@@ -17,6 +17,12 @@ pub struct PackageModule {
     package_managers: HashMap<Platform, Box<dyn PackageManager>>,
 }
 
+impl Default for PackageModule {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PackageModule {
     pub fn new() -> Self {
         let mut package_managers: HashMap<Platform, Box<dyn PackageManager>> = HashMap::new();
@@ -92,23 +98,22 @@ impl ExecutionModule for PackageModule {
             "absent" | "removed" => PackageState::Absent,
             _ => {
                 return Err(ModuleExecutionError::InvalidArgs(format!(
-                    "Invalid state: {}",
-                    state
+                    "Invalid state: {state}"
                 )))
             }
         };
 
-        let changed = match (current_state, target_state) {
-            (PackageState::Present, PackageState::Present) => false,
-            (PackageState::Absent, PackageState::Absent) => false,
-            _ => true,
-        };
+        let changed = !matches!(
+            (current_state, target_state),
+            (PackageState::Present, PackageState::Present)
+                | (PackageState::Absent, PackageState::Absent)
+        );
 
         if context.check_mode {
             return Ok(ModuleResult {
                 changed,
                 failed: false,
-                msg: Some(format!("Package {} would be {}", name, state)),
+                msg: Some(format!("Package {name} would be {state}")),
                 stdout: None,
                 stderr: None,
                 rc: None,
@@ -123,7 +128,7 @@ impl ExecutionModule for PackageModule {
             return Ok(ModuleResult {
                 changed: false,
                 failed: false,
-                msg: Some(format!("Package {} is already {}", name, state)),
+                msg: Some(format!("Package {name} is already {state}")),
                 stdout: None,
                 stderr: None,
                 rc: Some(0),
@@ -186,7 +191,7 @@ impl ExecutionModule for PackageModule {
         Ok(ModuleResult {
             changed: true, // Assume it would change for check mode
             failed: false,
-            msg: Some(format!("Package {} would be {}", name, state)),
+            msg: Some(format!("Package {name} would be {state}")),
             stdout: None,
             stderr: None,
             rc: None,

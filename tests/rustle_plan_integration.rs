@@ -9,8 +9,7 @@ fn test_parse_example_rustle_plan_output() {
     let result = validate_rustle_plan_json(&content);
     assert!(
         result.is_ok(),
-        "Failed to parse example rustle plan output: {:?}",
-        result
+        "Failed to parse example rustle plan output: {result:?}"
     );
 
     let rustle_plan = result.unwrap();
@@ -29,11 +28,7 @@ fn test_convert_rustle_plan_to_execution_plan() {
     let converter = RustlePlanConverter::new();
     let result = converter.convert_to_execution_plan(&rustle_plan);
 
-    assert!(
-        result.is_ok(),
-        "Failed to convert rustle plan: {:?}",
-        result
-    );
+    assert!(result.is_ok(), "Failed to convert rustle plan: {result:?}");
 
     let execution_plan = result.unwrap();
     assert_eq!(execution_plan.tasks.len(), 3);

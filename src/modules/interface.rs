@@ -49,7 +49,7 @@ pub struct ModuleArgs {
     pub special: SpecialParameters,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct SpecialParameters {
     pub r#become: Option<BecomeConfig>,
     pub when: Option<String>,
@@ -57,19 +57,6 @@ pub struct SpecialParameters {
     pub failed_when: Option<String>,
     pub check_mode: bool,
     pub diff: bool,
-}
-
-impl Default for SpecialParameters {
-    fn default() -> Self {
-        Self {
-            r#become: None,
-            when: None,
-            changed_when: None,
-            failed_when: None,
-            check_mode: false,
-            diff: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct InitServiceManager;
 
+impl Default for InitServiceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InitServiceManager {
     pub fn new() -> Self {
         Self
@@ -19,7 +25,7 @@ impl InitServiceManager {
 impl ServiceManager for InitServiceManager {
     async fn query_service(&self, name: &str) -> Result<ServiceStatus, ServiceManagerError> {
         let output = Command::new("service")
-            .args(&[name, "status"])
+            .args([name, "status"])
             .output()
             .await?;
 
@@ -35,7 +41,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn start_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("service")
-            .args(&[name, "start"])
+            .args([name, "start"])
             .output()
             .await?;
 
@@ -49,7 +55,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn stop_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("service")
-            .args(&[name, "stop"])
+            .args([name, "stop"])
             .output()
             .await?;
 
@@ -63,7 +69,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn restart_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("service")
-            .args(&[name, "restart"])
+            .args([name, "restart"])
             .output()
             .await?;
 
@@ -77,7 +83,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn reload_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         let output = Command::new("service")
-            .args(&[name, "reload"])
+            .args([name, "reload"])
             .output()
             .await?;
 
@@ -91,7 +97,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn enable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         // Try chkconfig first, then update-rc.d
-        let chkconfig_output = Command::new("chkconfig").args(&[name, "on"]).output().await;
+        let chkconfig_output = Command::new("chkconfig").args([name, "on"]).output().await;
 
         if let Ok(output) = chkconfig_output {
             if output.status.success() {
@@ -106,7 +112,7 @@ impl ServiceManager for InitServiceManager {
 
         // Try update-rc.d
         let update_rc_output = Command::new("update-rc.d")
-            .args(&[name, "enable"])
+            .args([name, "enable"])
             .output()
             .await?;
 
@@ -120,10 +126,7 @@ impl ServiceManager for InitServiceManager {
 
     async fn disable_service(&self, name: &str) -> Result<ServiceResult, ServiceManagerError> {
         // Try chkconfig first, then update-rc.d
-        let chkconfig_output = Command::new("chkconfig")
-            .args(&[name, "off"])
-            .output()
-            .await;
+        let chkconfig_output = Command::new("chkconfig").args([name, "off"]).output().await;
 
         if let Ok(output) = chkconfig_output {
             if output.status.success() {
@@ -138,7 +141,7 @@ impl ServiceManager for InitServiceManager {
 
         // Try update-rc.d
         let update_rc_output = Command::new("update-rc.d")
-            .args(&[name, "disable"])
+            .args([name, "disable"])
             .output()
             .await?;
 

@@ -17,6 +17,12 @@ pub struct ServiceModule {
     service_managers: HashMap<Platform, Box<dyn ServiceManager>>,
 }
 
+impl Default for ServiceModule {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServiceModule {
     pub fn new() -> Self {
         let mut service_managers: HashMap<Platform, Box<dyn ServiceManager>> = HashMap::new();
@@ -111,8 +117,7 @@ impl ExecutionModule for ServiceModule {
                 }
                 _ => {
                     return Err(ModuleExecutionError::InvalidArgs(format!(
-                        "Invalid state: {}",
-                        target_state
+                        "Invalid state: {target_state}"
                     )))
                 }
             }
@@ -130,7 +135,7 @@ impl ExecutionModule for ServiceModule {
             return Ok(ModuleResult {
                 changed,
                 failed: false,
-                msg: Some(format!("Service {} would be modified: {:?}", name, actions)),
+                msg: Some(format!("Service {name} would be modified: {actions:?}")),
                 stdout: None,
                 stderr: None,
                 rc: None,
@@ -145,7 +150,7 @@ impl ExecutionModule for ServiceModule {
             return Ok(ModuleResult {
                 changed: false,
                 failed: false,
-                msg: Some(format!("Service {} is already in desired state", name)),
+                msg: Some(format!("Service {name} is already in desired state")),
                 stdout: None,
                 stderr: None,
                 rc: Some(0),
@@ -191,7 +196,7 @@ impl ExecutionModule for ServiceModule {
         Ok(ModuleResult {
             changed: true,
             failed: false,
-            msg: Some(format!("Service {} successfully modified", name)),
+            msg: Some(format!("Service {name} successfully modified")),
             stdout: None,
             stderr: None,
             rc: Some(0),
@@ -223,7 +228,7 @@ impl ExecutionModule for ServiceModule {
         Ok(ModuleResult {
             changed: true, // Assume it would change for check mode
             failed: false,
-            msg: Some(format!("Service {} would be modified", name)),
+            msg: Some(format!("Service {name} would be modified")),
             stdout: None,
             stderr: None,
             rc: None,

@@ -9,6 +9,12 @@ use tokio::process::Command;
 
 pub struct AptPackageManager;
 
+impl Default for AptPackageManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AptPackageManager {
     pub fn new() -> Self {
         Self
@@ -18,7 +24,7 @@ impl AptPackageManager {
 #[async_trait]
 impl PackageManager for AptPackageManager {
     async fn query_package(&self, name: &str) -> Result<PackageState, PackageManagerError> {
-        let output = Command::new("dpkg").args(&["-l", name]).output().await?;
+        let output = Command::new("dpkg").args(["-l", name]).output().await?;
 
         if output.status.success() {
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -38,7 +44,7 @@ impl PackageManager for AptPackageManager {
 
     async fn install_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("apt-get")
-            .args(&["install", "-y", name])
+            .args(["install", "-y", name])
             .output()
             .await?;
 
@@ -52,16 +58,16 @@ impl PackageManager for AptPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} installed successfully", name))
+                Some(format!("Package {name} installed successfully"))
             } else {
-                Some(format!("Failed to install package {}", name))
+                Some(format!("Failed to install package {name}"))
             },
         })
     }
 
     async fn remove_package(&self, name: &str) -> Result<PackageResult, PackageManagerError> {
         let output = Command::new("apt-get")
-            .args(&["remove", "-y", name])
+            .args(["remove", "-y", name])
             .output()
             .await?;
 
@@ -75,15 +81,15 @@ impl PackageManager for AptPackageManager {
             stdout,
             stderr,
             message: if output.status.success() {
-                Some(format!("Package {} removed successfully", name))
+                Some(format!("Package {name} removed successfully"))
             } else {
-                Some(format!("Failed to remove package {}", name))
+                Some(format!("Failed to remove package {name}"))
             },
         })
     }
 
     async fn list_packages(&self) -> Result<Vec<Package>, PackageManagerError> {
-        let output = Command::new("dpkg").args(&["-l"]).output().await?;
+        let output = Command::new("dpkg").args(["-l"]).output().await?;
 
         if !output.status.success() {
             return Err(PackageManagerError::OperationFailed(

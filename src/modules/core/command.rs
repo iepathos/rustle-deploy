@@ -53,7 +53,7 @@ impl ExecutionModule for CommandModule {
                 return Ok(ModuleResult {
                     changed: false,
                     failed: false,
-                    msg: Some(format!("{} already exists", creates_path)),
+                    msg: Some(format!("{creates_path} already exists")),
                     stdout: None,
                     stderr: None,
                     rc: Some(0),
@@ -70,7 +70,7 @@ impl ExecutionModule for CommandModule {
                 return Ok(ModuleResult {
                     changed: false,
                     failed: false,
-                    msg: Some(format!("{} does not exist", removes_path)),
+                    msg: Some(format!("{removes_path} does not exist")),
                     stdout: None,
                     stderr: None,
                     rc: Some(0),
