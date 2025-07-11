@@ -1,0 +1,158 @@
+{
+    "metadata": {
+      "created_at": "2025-07-11T05:18:16.945474Z",
+      "rustle_version": "0.1.0",
+      "playbook_hash": "812eec7a8c0278898f4788b7923407b9",
+      "inventory_hash": "653a2ee28be80c8e41d5251b3923d10d",
+      "planning_options": {
+        "limit": null,
+        "tags": [],
+        "skip_tags": [],
+        "check_mode": false,
+        "diff_mode": false,
+        "forks": 50,
+        "serial": null,
+        "strategy": "BinaryHybrid",
+        "binary_threshold": 5,
+        "force_binary": false,
+        "force_ssh": false
+      }
+    },
+    "plays": [
+      {
+        "play_id": "play-0",
+        "name": "Simple test playbook",
+        "strategy": "BinaryHybrid",
+        "serial": null,
+        "hosts": [
+          "localhost"
+        ],
+        "batches": [
+          {
+            "batch_id": "binary-batch",
+            "hosts": [
+              "localhost"
+            ],
+            "tasks": [
+              {
+                "task_id": "task_0",
+                "name": "Print a message",
+                "module": "debug",
+                "args": {
+                  "msg": "hello world"
+                },
+                "hosts": [
+                  "localhost"
+                ],
+                "dependencies": [],
+                "conditions": [
+                  {
+                    "Tag": {
+                      "tags": [
+                        "debug",
+                        "test"
+                      ]
+                    }
+                  }
+                ],
+                "tags": [
+                  "debug",
+                  "test"
+                ],
+                "notify": [],
+                "execution_order": 0,
+                "can_run_parallel": true,
+                "estimated_duration": {
+                  "secs": 0,
+                  "nanos": 100000000
+                },
+                "risk_level": "Low"
+              },
+              {
+                "task_id": "task_1",
+                "name": "Install package",
+                "module": "package",
+                "args": {
+                  "state": "present",
+                  "name": "git"
+                },
+                "hosts": [
+                  "localhost"
+                ],
+                "dependencies": [],
+                "conditions": [],
+                "tags": [],
+                "notify": [],
+                "execution_order": 1,
+                "can_run_parallel": false,
+                "estimated_duration": {
+                  "secs": 60,
+                  "nanos": 0
+                },
+                "risk_level": "High"
+              },
+              {
+                "task_id": "task_2",
+                "name": "Notify handler",
+                "module": "command",
+                "args": {
+                  "_raw_params": "/bin/true"
+                },
+                "hosts": [
+                  "localhost"
+                ],
+                "dependencies": [],
+                "conditions": [
+                  {
+                    "When": {
+                      "expression": "test_var is defined"
+                    }
+                  }
+                ],
+                "tags": [],
+                "notify": [
+                  "restart service"
+                ],
+                "execution_order": 2,
+                "can_run_parallel": false,
+                "estimated_duration": {
+                  "secs": 5,
+                  "nanos": 445000000
+                },
+                "risk_level": "Critical"
+              }
+            ],
+            "parallel_groups": [],
+            "dependencies": [],
+            "estimated_duration": null
+          }
+        ],
+        "handlers": [
+          {
+            "handler_id": "task_0",
+            "name": "restart service",
+            "module": "service",
+            "args": {
+              "name": "example",
+              "state": "restarted"
+            },
+            "conditions": [],
+            "execution_order": 0
+          }
+        ],
+        "estimated_duration": null
+      }
+    ],
+    "binary_deployments": [],
+    "total_tasks": 3,
+    "estimated_duration": {
+      "secs": 29,
+      "nanos": 663500000
+    },
+    "estimated_compilation_time": null,
+    "parallelism_score": 0.33333334,
+    "network_efficiency_score": 0.2,
+    "hosts": [
+      "localhost"
+    ]
+  }
