@@ -59,7 +59,7 @@ syn = { version = "2.0", features = ["full"] }
 
 # Platform-specific dependencies
 [target.'cfg(unix)'.dependencies]
-nix = "0.27"
+nix = "0.30"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winnt", "winsvc"] }
