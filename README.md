@@ -32,10 +32,10 @@ Rustle Deploy revolutionizes infrastructure automation by:
 2. **Compile and deploy an execution plan**
    ```bash
    # Basic deployment
-   rustle-deploy plan.json -i inventory.yml
+   rustle-deploy plan.json
    
    # With verification and parallel deployment
-   rustle-deploy plan.json -i inventory.yml --verify --parallel 8
+   rustle-deploy plan.json --verify --parallel 8
    ```
 
 3. **Pipeline integration**
@@ -114,7 +114,7 @@ cargo build --release
 cargo install --path .
 
 # Run with example plan
-cargo run -- examples/simple_plan.json -i examples/inventory.yml
+cargo run -- examples/simple_plan.json
 
 # Development with hot reloading
 cargo watch -x "run -- --help"
@@ -135,8 +135,8 @@ rustle-deploy plan.json --incremental --cache-dir ~/.rustle/cache
 rustle-deploy plan.json --target x86_64-unknown-linux-gnu
 rustle-deploy plan.json --target aarch64-unknown-linux-gnu
 
-# Cleanup deployed binaries
-rustle-deploy --cleanup -i inventory.yml
+# Cleanup deployed binaries (requires plan with host info)
+rustle-deploy --cleanup plan.json
 
 # Verification and rollback
 rustle-deploy plan.json --verify
@@ -171,9 +171,9 @@ cargo fmt
 rustle-deploy [OPTIONS] [EXECUTION_PLAN]
 
 OPTIONS:
-    -i, --inventory <FILE>         Inventory file with target host information
+    -c, --config <FILE>            Configuration file for deployment settings
     -o, --output-dir <DIR>         Directory for compiled binaries [default: ./target]
-    -t, --target <TRIPLE>          Target architecture (auto-detect from inventory)
+    -t, --target <TRIPLE>          Target architecture (auto-detect from plan hosts)
         --cache-dir <DIR>          Compilation cache directory
         --incremental              Enable incremental compilation
         --rebuild                  Force rebuild of all binaries
@@ -195,7 +195,7 @@ ARGS:
 
 ```bash
 # Basic deployment
-rustle-deploy plan.json -i hosts.yml
+rustle-deploy plan.json
 
 # Compile for specific target
 rustle-deploy plan.json --target x86_64-unknown-linux-gnu
