@@ -97,9 +97,6 @@ impl HostInfoProber {
         if self.command_exists("ssh") {
             capabilities.push("ssh".to_string());
         }
-        if self.command_exists("docker") {
-            capabilities.push("docker".to_string());
-        }
         if self.command_exists("podman") {
             capabilities.push("podman".to_string());
         }

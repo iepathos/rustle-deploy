@@ -214,11 +214,12 @@ pub enum ModuleSource {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionStrategy {
-    pub parallel_limit: Option<u32>,
-    pub fail_fast: bool,
-    pub retry_failed: bool,
-    pub rollback_on_failure: bool,
+pub enum ExecutionStrategy {
+    Linear,
+    Free,
+    BinaryHybrid,
+    BinaryOnly,
+    SshOnly,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -1,4 +1,4 @@
-# Spec 100: Zero-Infrastructure Cross-Compilation
+# Spec 090: Zero-Infrastructure Cross-Compilation
 
 ## Feature Summary
 

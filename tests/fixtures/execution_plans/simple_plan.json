@@ -57,12 +57,7 @@
     },
     "variables": {}
   },
-  "strategy": {
-    "parallel_limit": 10,
-    "fail_fast": true,
-    "retry_failed": false,
-    "rollback_on_failure": false
-  },
+  "strategy": "Linear",
   "facts_template": {
     "global_facts": ["hostname", "architecture"],
     "host_facts": ["memory", "disk"],
