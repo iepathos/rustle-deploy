@@ -21,6 +21,7 @@ This document tracks the status of all specification documents in the project.
 | Spec | Feature | Status |
 |------|---------|--------|
 | 100 | Binary Compilation Pipeline | ⬜ Planned |
+| 110 | End-to-End Testing Framework | ⬜ Planned |
 
 ## Notes
 
