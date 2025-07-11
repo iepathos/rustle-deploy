@@ -53,7 +53,7 @@ impl InventoryValidator for ArchitectureValidator {
                 // For local connections, we can detect automatically
                 if !matches!(host.connection.method, ConnectionMethod::Local) {
                     return Err(ValidationError::InvalidConnection {
-                        host: format!("{} (missing architecture information)", host_name),
+                        host: format!("{host_name} (missing architecture information)"),
                     });
                 }
             }
@@ -79,15 +79,15 @@ impl InventoryValidator for VariableValidator {
             for group_name in &host.groups {
                 if !inventory.groups.contains_key(group_name) {
                     return Err(ValidationError::MissingGroup {
-                        group: format!("{} (referenced by host {})", group_name, host_name),
+                        group: format!("{group_name} (referenced by host {host_name})"),
                     });
                 }
             }
         }
 
         // Check for circular group dependencies
-        for (group_name, _group) in &inventory.groups {
-            if self.has_circular_dependency(
+        for group_name in inventory.groups.keys() {
+            if Self::has_circular_dependency(
                 group_name,
                 group_name,
                 &inventory.groups,
@@ -105,7 +105,6 @@ impl InventoryValidator for VariableValidator {
 
 impl VariableValidator {
     fn has_circular_dependency(
-        &self,
         original_group: &str,
         current_group: &str,
         groups: &std::collections::HashMap<String, crate::types::inventory::InventoryGroup>,
@@ -119,7 +118,7 @@ impl VariableValidator {
 
         if let Some(group) = groups.get(current_group) {
             for parent in &group.parent_groups {
-                if self.has_circular_dependency(original_group, parent, groups, visited) {
+                if Self::has_circular_dependency(original_group, parent, groups, visited) {
                     return true;
                 }
             }

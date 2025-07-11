@@ -86,7 +86,7 @@ impl HostInfoProber {
             ("x86_64", "macos") => "x86_64-apple-darwin".to_string(),
             ("aarch64", "macos") => "aarch64-apple-darwin".to_string(),
             ("x86_64", "windows") => "x86_64-pc-windows-msvc".to_string(),
-            (arch, os) => format!("{}-unknown-{}", arch, os),
+            (arch, os) => format!("{arch}-unknown-{os}"),
         }
     }
 

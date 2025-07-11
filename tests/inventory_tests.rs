@@ -17,7 +17,7 @@ async fn test_inventory_processor_basic() {
     // Process the inventory
     let result = processor.process_inventory_data(&mut inventory);
     if let Err(e) = &result {
-        println!("Error processing inventory: {:?}", e);
+        println!("Error processing inventory: {e:?}");
     }
     assert!(result.is_ok());
 

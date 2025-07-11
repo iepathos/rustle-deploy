@@ -44,7 +44,7 @@ fn test_parse_invalid_json() {
 
     match result.unwrap_err() {
         ParseError::InvalidJson { .. } => {} // Expected
-        other => panic!("Expected InvalidJson error, got: {:?}", other),
+        other => panic!("Expected InvalidJson error, got: {other:?}"),
     }
 }
 

@@ -18,7 +18,7 @@ impl VariableResolver {
             for group_name in &host.groups {
                 if let Some(group) = inventory.groups.get(group_name) {
                     // Recursively resolve parent group variables
-                    self.resolve_group_variables(group, &inventory.groups, &mut resolved_vars)?;
+                    Self::resolve_group_variables(group, &inventory.groups, &mut resolved_vars)?;
 
                     // Apply group variables
                     for (key, value) in &group.variables {
@@ -40,7 +40,6 @@ impl VariableResolver {
     }
 
     fn resolve_group_variables(
-        &self,
         group: &InventoryGroup,
         all_groups: &HashMap<String, InventoryGroup>,
         vars: &mut HashMap<String, serde_json::Value>,
@@ -48,7 +47,7 @@ impl VariableResolver {
         // Recursively resolve parent group variables first
         for parent_name in &group.parent_groups {
             if let Some(parent_group) = all_groups.get(parent_name) {
-                self.resolve_group_variables(parent_group, all_groups, vars)?;
+                Self::resolve_group_variables(parent_group, all_groups, vars)?;
                 for (key, value) in &parent_group.variables {
                     vars.insert(key.clone(), value.clone());
                 }
@@ -65,13 +64,12 @@ impl VariableResolver {
         for group_name in groups.keys() {
             let mut visited = std::collections::HashSet::new();
             let mut path = Vec::new();
-            self.check_circular_group_deps(group_name, groups, &mut visited, &mut path)?;
+            Self::check_circular_group_deps(group_name, groups, &mut visited, &mut path)?;
         }
         Ok(())
     }
 
     fn check_circular_group_deps(
-        &self,
         group_name: &str,
         groups: &HashMap<String, InventoryGroup>,
         visited: &mut std::collections::HashSet<String>,
@@ -92,7 +90,7 @@ impl VariableResolver {
 
         if let Some(group) = groups.get(group_name) {
             for parent in &group.parent_groups {
-                self.check_circular_group_deps(parent, groups, visited, path)?;
+                Self::check_circular_group_deps(parent, groups, visited, path)?;
             }
         }
 

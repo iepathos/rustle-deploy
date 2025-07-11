@@ -41,19 +41,19 @@ impl InventoryProcessor {
         // Validate the inventory structure
         self.validate(inventory)
             .map_err(|e| InventoryError::VariableResolution {
-                variable: format!("Validation failed: {}", e),
+                variable: format!("Validation failed: {e}"),
             })?;
 
         // Resolve variables and inheritance
         self.resolve_variables(inventory)
             .map_err(|e| InventoryError::VariableResolution {
-                variable: format!("Variable resolution failed: {}", e),
+                variable: format!("Variable resolution failed: {e}"),
             })?;
 
         // Detect architectures for hosts
         self.detect_architectures(inventory).map_err(|e| {
             InventoryError::ArchitectureDetectionFailed {
-                host: format!("Architecture detection failed: {}", e),
+                host: format!("Architecture detection failed: {e}"),
             }
         })?;
 
@@ -79,7 +79,7 @@ impl InventoryProcessor {
                     host.target_triple = Some(triple);
                 } else {
                     return Err(DetectionError::DetectionFailed {
-                        reason: format!("Could not detect target triple for host: {}", host_name),
+                        reason: format!("Could not detect target triple for host: {host_name}"),
                     });
                 }
             }
@@ -126,10 +126,10 @@ impl InventoryProcessor {
                 },
                 crate::types::inventory::ConnectionMethod::Local => DeploymentMethod::Scp,
                 crate::types::inventory::ConnectionMethod::Docker => DeploymentMethod::Custom {
-                    command: format!("docker cp {{binary_path}} {}:/tmp/rustle-runner", host_name),
+                    command: format!("docker cp {{binary_path}} {host_name}:/tmp/rustle-runner"),
                 },
                 crate::types::inventory::ConnectionMethod::Podman => DeploymentMethod::Custom {
-                    command: format!("podman cp {{binary_path}} {}:/tmp/rustle-runner", host_name),
+                    command: format!("podman cp {{binary_path}} {host_name}:/tmp/rustle-runner"),
                 },
             };
 
@@ -145,7 +145,7 @@ impl InventoryProcessor {
             targets.push(DeploymentTarget {
                 host: deployment_host,
                 target_path,
-                binary_compilation_id: format!("rustle-{}", target_triple),
+                binary_compilation_id: format!("rustle-{target_triple}"),
                 deployment_method,
                 status: DeploymentStatus::Pending,
                 deployed_at: None,
@@ -171,7 +171,7 @@ impl InventoryProcessor {
         // Check for ansible-style paths
         if let Some(path_val) = variables.get("ansible_remote_tmp") {
             if let Some(path_str) = path_val.as_str() {
-                return format!("{}/rustle-runner", path_str);
+                return format!("{path_str}/rustle-runner");
             }
         }
 
