@@ -6,7 +6,7 @@
 #![recursion_limit = "256"]
 
 pub mod binary;
-// pub mod compilation;  // Temporarily disabled for simpler build
+pub mod compilation;
 pub mod compiler;
 pub mod deploy;
 pub mod execution;
@@ -16,7 +16,7 @@ pub mod runtime;
 pub mod template;
 pub mod types;
 
-// pub use compilation::*;  // Temporarily disabled for simpler build
+pub use compilation::{BinaryCompiler, CompilerConfig, TargetDetector, TargetSpecification, CompilationCache};
 pub use deploy::DeploymentManager;
 pub use inventory::*;
 pub use types::*;

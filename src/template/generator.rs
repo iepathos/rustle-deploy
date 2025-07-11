@@ -572,3 +572,38 @@ impl<'de> Deserialize<'de> for OptimizationLevel {
         }
     }
 }
+
+impl GeneratedTemplate {
+    /// Calculate a hash of the template for caching and comparison
+    pub fn calculate_hash(&self) -> String {
+        use sha2::{Digest, Sha256};
+
+        let mut hasher = Sha256::new();
+
+        // Hash the cache key (already includes execution plan and config)
+        hasher.update(&self.cache_key);
+
+        // Hash target info
+        hasher.update(&self.target_info.target_triple);
+        hasher.update(&self.target_info.architecture);
+        hasher.update(&self.target_info.os_family);
+
+        // Hash compilation flags
+        for flag in &self.compilation_flags {
+            hasher.update(flag);
+        }
+
+        // Hash source files
+        let mut sorted_files: Vec<_> = self.source_files.iter().collect();
+        sorted_files.sort_by_key(|(path, _)| *path);
+        for (path, content) in sorted_files {
+            hasher.update(path.to_string_lossy().as_bytes());
+            hasher.update(content);
+        }
+
+        // Hash cargo.toml
+        hasher.update(&self.cargo_toml);
+
+        format!("{:x}", hasher.finalize())
+    }
+}

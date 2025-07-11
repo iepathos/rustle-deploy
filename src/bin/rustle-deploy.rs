@@ -1,7 +1,14 @@
 use anyhow::Result;
 use clap::Parser;
+use rustle_deploy::compilation::{
+    BinaryCompiler, CompilerConfig, OptimizationLevel as CompilationOptimizationLevel,
+    TargetDetector, TargetSpecification,
+};
+use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
+use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
+use rustle_deploy::types::Platform;
 use std::path::PathBuf;
-use tracing::info;
+use tracing::{error, info, warn};
 
 #[derive(Parser)]
 #[command(name = "rustle-deploy")]
@@ -62,6 +69,10 @@ struct RustleDeployCli {
     /// Show what would be deployed without executing
     #[arg(long)]
     dry_run: bool,
+
+    /// Test compilation and execution on localhost only
+    #[arg(long)]
+    localhost_test: bool,
 }
 
 #[tokio::main]
@@ -341,11 +352,26 @@ async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> 
                 execution_plan.ssh_fallback_hosts
             );
         }
-    } else if cli.compile_only {
+    } else if cli.compile_only || cli.localhost_test {
         println!();
-        println!("🔨 Compilation-only mode");
-        println!("   Binaries would be compiled to: {:?}", cli.output_dir);
-        println!("   ⚠️  Actual compilation not yet implemented");
+        if cli.localhost_test {
+            println!("🧪 Localhost test mode - compiling and testing locally");
+        } else {
+            println!("🔨 Compilation-only mode");
+        }
+
+        match run_compilation(&execution_plan, cli).await {
+            Ok(()) => {
+                println!("✅ Compilation completed successfully");
+                if cli.localhost_test {
+                    println!("✅ Localhost test completed successfully");
+                }
+            }
+            Err(e) => {
+                error!("❌ Compilation failed: {}", e);
+                return Err(e);
+            }
+        }
     } else if cli.deploy_only {
         println!();
         println!("🚀 Deploy-only mode");
@@ -358,6 +384,209 @@ async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> 
         println!("   Use --dry-run to see deployment planning");
         println!("   Use --compile-only to compile binaries only");
         println!("   Use --deploy-only to deploy existing binaries");
+    }
+
+    Ok(())
+}
+
+async fn run_compilation(
+    _execution_plan: &ExecutionPlanSummary,
+    cli: &RustleDeployCli,
+) -> Result<()> {
+    info!("Starting binary compilation pipeline");
+
+    // Parse the actual execution plan from the file
+    let rustle_plan = parse_rustle_plan_from_file(cli.execution_plan.as_ref().unwrap()).await?;
+
+    // Set up compilation configuration
+    let mut compiler_config = CompilerConfig {
+        temp_dir: std::env::temp_dir().join("rustle-compilation"),
+        cache_dir: cli.cache_dir.clone().unwrap_or_else(|| {
+            dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".rustle")
+                .join("cache")
+        }),
+        enable_cache: !cli.rebuild,
+        ..Default::default()
+    };
+
+    // Parse optimization level
+    compiler_config.default_optimization = match cli.optimization.as_str() {
+        "debug" => CompilationOptimizationLevel::Debug,
+        "release" => CompilationOptimizationLevel::Release,
+        "aggressive" => CompilationOptimizationLevel::MinimalSize,
+        "auto" => CompilationOptimizationLevel::Release,
+        _ => {
+            warn!(
+                "Unknown optimization level '{}', using 'release'",
+                cli.optimization
+            );
+            CompilationOptimizationLevel::Release
+        }
+    };
+
+    // Set up target detection
+    let target_detector = TargetDetector::new();
+
+    // Determine target specification
+    let target_spec = if cli.localhost_test {
+        target_detector.create_localhost_target_spec()?
+    } else if let Some(target) = &cli.target {
+        target_detector.create_target_spec(target, compiler_config.default_optimization.clone())?
+    } else {
+        target_detector.create_localhost_target_spec()?
+    };
+
+    info!("Compiling for target: {}", target_spec.target_triple);
+
+    // Create binary template generator
+    let template_config = TemplateConfig::default();
+    let template_generator = BinaryTemplateGenerator::new(template_config)?;
+
+    // Create target info
+    let target_info = create_target_info_from_spec(&target_spec)?;
+
+    // Generate binary template from execution plan
+    info!("Generating binary template");
+    let template = template_generator
+        .generate_binary_template(
+            &rustle_plan,
+            rustle_plan
+                .binary_deployments
+                .first()
+                .unwrap_or(&Default::default()),
+            &target_info,
+        )
+        .await?;
+
+    info!(
+        "Template generated with {} source files",
+        template.source_files.len()
+    );
+    info!("Template hash: {}", template.calculate_hash());
+
+    // Create compiler and compile
+    let mut compiler = BinaryCompiler::new(compiler_config);
+
+    info!("Starting compilation process");
+    let compiled_binary = compiler.compile_binary(&template, &target_spec).await?;
+
+    info!("✅ Binary compiled successfully:");
+    info!("   Binary ID: {}", compiled_binary.binary_id);
+    info!("   Target: {}", compiled_binary.target_triple);
+    info!("   Size: {} bytes", compiled_binary.size);
+    info!(
+        "   Compilation time: {:?}",
+        compiled_binary.compilation_time
+    );
+    info!("   Checksum: {}", compiled_binary.checksum);
+
+    // Copy binary to output directory
+    tokio::fs::create_dir_all(&cli.output_dir).await?;
+    let output_path = cli
+        .output_dir
+        .join(format!("rustle-runner-{}", compiled_binary.target_triple));
+
+    tokio::fs::copy(&compiled_binary.binary_path, &output_path).await?;
+    info!("Binary saved to: {}", output_path.display());
+
+    // Test execution if localhost test mode
+    if cli.localhost_test {
+        info!("Testing binary execution on localhost");
+        test_binary_execution(&output_path).await?;
+    }
+
+    Ok(())
+}
+
+async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput> {
+    let content = tokio::fs::read_to_string(path).await?;
+    let rustle_plan: RustlePlanOutput = serde_json::from_str(&content)?;
+    Ok(rustle_plan)
+}
+
+fn create_target_info_from_spec(target_spec: &TargetSpecification) -> Result<TargetInfo> {
+    let platform = if target_spec.target_triple.contains("apple-darwin") {
+        Platform::MacOS
+    } else if target_spec.target_triple.contains("linux") {
+        Platform::Linux
+    } else if target_spec.target_triple.contains("windows") {
+        Platform::Windows
+    } else {
+        return Err(anyhow::anyhow!(
+            "Unsupported target platform: {}",
+            target_spec.target_triple
+        ));
+    };
+
+    let architecture = if target_spec.target_triple.starts_with("aarch64") {
+        "aarch64"
+    } else if target_spec.target_triple.starts_with("x86_64") {
+        "x86_64"
+    } else {
+        "unknown"
+    };
+
+    let os_family = if target_spec.target_triple.contains("windows") {
+        "windows"
+    } else {
+        "unix"
+    };
+
+    let libc = if target_spec.target_triple.contains("musl") {
+        Some("musl".to_string())
+    } else if target_spec.target_triple.contains("gnu") {
+        Some("gnu".to_string())
+    } else {
+        None
+    };
+
+    Ok(TargetInfo {
+        target_triple: target_spec.target_triple.clone(),
+        platform,
+        architecture: architecture.to_string(),
+        os_family: os_family.to_string(),
+        libc,
+        features: target_spec.features.clone(),
+    })
+}
+
+async fn test_binary_execution(binary_path: &PathBuf) -> Result<()> {
+    info!("Executing binary for testing: {}", binary_path.display());
+
+    let output = tokio::process::Command::new(binary_path)
+        .arg("--help") // Try to get help output first
+        .output()
+        .await?;
+
+    if output.status.success() {
+        info!("✅ Binary executed successfully");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.trim().is_empty() {
+            info!("Binary output:\n{}", stdout);
+        }
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        warn!("⚠️  Binary execution had non-zero exit status");
+        if !stderr.trim().is_empty() {
+            warn!("Stderr: {}", stderr);
+        }
+
+        // Try running without --help flag
+        info!("Trying to run binary without arguments");
+        let output2 = tokio::process::Command::new(binary_path).output().await?;
+
+        if output2.status.success() {
+            info!("✅ Binary executed successfully without arguments");
+            let stdout = String::from_utf8_lossy(&output2.stdout);
+            if !stdout.trim().is_empty() {
+                info!("Binary output:\n{}", stdout);
+            }
+        } else {
+            let stderr = String::from_utf8_lossy(&output2.stderr);
+            return Err(anyhow::anyhow!("Binary execution failed: {}", stderr));
+        }
     }
 
     Ok(())

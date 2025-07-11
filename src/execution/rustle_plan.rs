@@ -249,3 +249,30 @@ mod serde_duration_opt {
         Ok(helper_opt.map(|helper| Duration::new(helper.secs, helper.nanos)))
     }
 }
+
+impl Default for BinaryDeploymentPlan {
+    fn default() -> Self {
+        Self {
+            deployment_id: "default".to_string(),
+            target_hosts: vec![],
+            target_architecture: "native".to_string(),
+            task_ids: vec![],
+            estimated_savings: Duration::from_secs(0),
+            compilation_requirements: CompilationRequirements {
+                modules: vec!["command".to_string(), "debug".to_string()],
+                static_files: vec![],
+                target_triple: "native".to_string(),
+                optimization_level: "release".to_string(),
+                features: vec![],
+            },
+            controller_endpoint: None,
+            execution_timeout: None,
+            report_interval: None,
+            cleanup_on_completion: Some(true),
+            log_level: Some("info".to_string()),
+            max_retries: Some(3),
+            static_files: vec![],
+            secrets: vec![],
+        }
+    }
+}
