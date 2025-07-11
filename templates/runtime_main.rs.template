@@ -1,0 +1,67 @@
+use std::collections::HashMap;
+use serde_json::Value;
+use anyhow::Result;
+
+mod embedded_data {
+    pub const EXECUTION_PLAN: &str = {{execution_plan}};
+    pub const RUNTIME_CONFIG: &str = {{runtime_config}};
+}
+
+mod runtime {
+    use super::*;
+    
+    // Import the runtime execution engine types
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+    use std::time::{Duration, Instant};
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Serialize};
+    use uuid::Uuid;
+    use futures::future;
+    use petgraph::{algo::toposort, Graph};
+    use tokio;
+    use anyhow::{Context, Result};
+    use thiserror::Error;
+    use tracing;
+    use hostname;
+    use reqwest;
+    
+    {{runtime_code}}
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Initialize logging
+    tracing_subscriber::fmt::init();
+    
+    tracing::info!("Starting embedded execution");
+    
+    // Parse embedded execution plan
+    let execution_plan: runtime::ExecutionPlan = serde_json::from_str(embedded_data::EXECUTION_PLAN)
+        .context("Failed to parse embedded execution plan")?;
+    
+    let runtime_config: runtime::RuntimeConfig = serde_json::from_str(embedded_data::RUNTIME_CONFIG)
+        .context("Failed to parse embedded runtime config")?;
+    
+    tracing::info!("Loaded execution plan with {} tasks", execution_plan.tasks.len());
+    
+    // Create and run executor
+    let mut executor = runtime::LocalExecutor::new(runtime_config);
+    let result = executor.execute_plan(execution_plan).await
+        .context("Failed to execute plan")?;
+    
+    tracing::info!("Execution completed: {} tasks total, {} failed, {} changed", 
+        result.summary.total_tasks,
+        result.summary.failed_tasks,
+        result.summary.changed_tasks
+    );
+    
+    // Report final results if controller endpoint is configured
+    if result.failed {
+        tracing::error!("Execution failed with {} failed tasks", result.summary.failed_tasks);
+        std::process::exit(1);
+    } else {
+        tracing::info!("Execution completed successfully");
+        std::process::exit(0);
+    }
+}

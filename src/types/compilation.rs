@@ -19,7 +19,7 @@ pub struct EmbeddedExecutionData {
     pub execution_plan: String,
     pub module_implementations: Vec<ModuleImplementation>,
     pub static_files: Vec<StaticFile>,
-    pub runtime_config: super::RuntimeConfig,
+    pub runtime_config: crate::runtime::RuntimeConfig,
     pub facts_template: Vec<String>,
 }
 

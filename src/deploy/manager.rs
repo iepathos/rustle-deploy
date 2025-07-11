@@ -333,15 +333,20 @@ impl DeploymentManager {
                         })
                         .collect(),
                     static_files: vec![],
-                    runtime_config: RuntimeConfig {
+                    runtime_config: crate::runtime::RuntimeConfig {
                         controller_endpoint: None,
                         execution_timeout: execution_plan
                             .deployment_config
                             .deployment_timeout
                             .unwrap_or(std::time::Duration::from_secs(3600)),
+                        task_timeout: Some(std::time::Duration::from_secs(300)),
                         report_interval: std::time::Duration::from_secs(60),
                         cleanup_on_completion: execution_plan.deployment_config.cleanup_on_success,
                         log_level: "info".to_string(),
+                        check_mode: Some(false),
+                        parallel_tasks: Some(4),
+                        facts_cache_ttl: std::time::Duration::from_secs(300),
+                        retry_policy: None,
                     },
                     facts_template: execution_plan.facts_template.global_facts.clone(),
                 },

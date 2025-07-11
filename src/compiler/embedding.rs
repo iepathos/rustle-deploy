@@ -13,7 +13,7 @@ impl DataEmbedder {
         execution_plan: &str,
         modules: &[ModuleImplementation],
         static_files: &[StaticFile],
-        runtime_config: &RuntimeConfig,
+        runtime_config: &crate::runtime::RuntimeConfig,
     ) -> Result<EmbeddedExecutionData> {
         // Validate execution plan
         self.validate_execution_plan(execution_plan)?;
@@ -178,7 +178,10 @@ impl DataEmbedder {
         ))
     }
 
-    fn generate_runtime_config_constant(&self, runtime_config: &RuntimeConfig) -> Result<String> {
+    fn generate_runtime_config_constant(
+        &self,
+        runtime_config: &crate::runtime::RuntimeConfig,
+    ) -> Result<String> {
         let config_json = serde_json::to_string(runtime_config)?;
         let escaped_config = serde_json::to_string(&config_json)?;
 
