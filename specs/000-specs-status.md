@@ -9,6 +9,7 @@ This document tracks the status of all specification documents in the project.
 | 010 | Rustle Deploy Tool | ✅ Complete |
 | 020 | Execution Plan Integration | ✅ Complete |
 | 030 | Inventory Processing | ✅ Complete |
+| 040 | Runtime Execution Engine | ✅ Complete |
 | 060 | Rustle Plan Output Compatibility | ✅ Complete |
 | 070 | Core Execution Modules | ✅ Complete |
 
@@ -16,7 +17,6 @@ This document tracks the status of all specification documents in the project.
 
 | Spec | Feature | Status |
 |------|---------|--------|
-| 040 | Runtime Execution Engine | ⬜ Planned |
 | 050 | Module System Integration | ⬜ Planned |
 | 080 | Binary Template Generation | ⬜ Planned |
 | 090 | Zero-Infrastructure Cross-Compilation | ⬜ Planned |
