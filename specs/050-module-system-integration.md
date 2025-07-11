@@ -2,16 +2,18 @@
 
 ## Feature Summary
 
-Implement a comprehensive module system that enables dynamic loading, compilation, and static linking of custom task execution modules into deployment binaries. This system bridges the gap between rustle-plan's module requirements and the embedded runtime execution engine.
+Implement a comprehensive module system that enables compilation and static linking of task execution modules into deployment binaries. This system processes module requirements from rustle-plan execution plans and embeds them into the runtime execution engine.
 
-**Problem it solves**: The current implementation has placeholder module loading and cannot discover, compile, or integrate custom modules from execution plans, limiting functionality to basic built-in modules.
+**Problem it solves**: The current implementation has placeholder module loading and cannot compile or integrate custom modules from execution plans, limiting functionality to basic built-in modules.
 
-**High-level approach**: Create a module discovery system that can locate module sources, compile them into the deployment binary, and register them with the runtime execution engine for seamless task execution.
+**High-level approach**: Create a module compilation system that takes module requirements from execution plans, compiles them into the deployment binary, and registers them with the runtime execution engine for seamless task execution.
+
+**Modular Architecture Role**: rustle-deploy handles module compilation and embedding, working with execution plans from rustle-plan that specify module requirements discovered during playbook parsing by rustle-parse.
 
 ## Goals & Requirements
 
 ### Functional Requirements
-- Discover modules required by execution plans
+- Process module requirements from execution plans
 - Load module source code from various sources (filesystem, Git, HTTP, registry)
 - Validate module compatibility and dependencies
 - Compile custom modules into deployment binaries
@@ -19,18 +21,18 @@ Implement a comprehensive module system that enables dynamic loading, compilatio
 - Support module versioning and conflict resolution
 - Handle module dependency chains
 - Provide module security validation and sandboxing
-- Support both static and dynamic module loading
-- Enable module hot-swapping for development
+- Support static module embedding in binaries
+- Enable module compilation optimization
 
 ### Non-functional Requirements
-- **Performance**: Module discovery and loading in <5 seconds for typical plans
+- **Performance**: Module compilation and embedding in <5 seconds for typical plans
 - **Security**: Sandboxed module execution with permission controls
 - **Compatibility**: Support standard Rust module patterns and Ansible module compatibility
 - **Size**: Minimize binary size impact of unused modules
-- **Reliability**: 99.9%+ module loading success rate for valid modules
+- **Reliability**: 99.9%+ module compilation success rate for valid modules
 
 ### Success Criteria
-- Successfully load and execute all required modules from execution plans
+- Successfully compile and embed all required modules from execution plans
 - Support custom module development workflow
 - Provide secure module isolation and validation
 - Enable efficient module compilation and caching
@@ -38,21 +40,21 @@ Implement a comprehensive module system that enables dynamic loading, compilatio
 
 ## API/Interface Design
 
-### Module Discovery and Loading
+### Module Compilation and Embedding
 
 ```rust
-/// Module loader that discovers and loads modules for execution plans
-pub struct ModuleLoader {
+/// Module compiler that processes modules from execution plans
+pub struct ModuleCompiler {
     module_cache: ModuleCache,
     source_resolvers: Vec<Box<dyn ModuleSourceResolver>>,
     validator: ModuleValidator,
-    compiler: ModuleCompiler,
+    code_generator: CodeGenerator,
 }
 
-impl ModuleLoader {
+impl ModuleCompiler {
     pub fn new() -> Self;
     
-    pub async fn discover_modules(&self, execution_plan: &ExecutionPlan) -> Result<Vec<ModuleSpec>, ModuleError>;
+    pub async fn extract_module_requirements(&self, execution_plan: &ExecutionPlan) -> Result<Vec<ModuleSpec>, ModuleError>;
     
     pub async fn load_module(&self, spec: &ModuleSpec) -> Result<LoadedModule, ModuleError>;
     
@@ -638,10 +640,10 @@ tests/modules/
 
 ### Key Algorithms
 
-**Module Discovery from Execution Plan**:
+**Module Requirements Extraction from Execution Plan**:
 ```rust
-impl ModuleLoader {
-    pub async fn discover_modules(&self, execution_plan: &ExecutionPlan) -> Result<Vec<ModuleSpec>, ModuleError> {
+impl ModuleCompiler {
+    pub async fn extract_module_requirements(&self, execution_plan: &ExecutionPlan) -> Result<Vec<ModuleSpec>, ModuleError> {
         let mut required_modules = HashSet::new();
         let mut module_specs = Vec::new();
         
@@ -659,9 +661,9 @@ impl ModuleLoader {
             }
         }
         
-        // Resolve module specifications
+        // Extract module specifications from execution plan
         for module_name in required_modules {
-            let spec = self.resolve_module_spec(&module_name, &execution_plan.modules)?;
+            let spec = self.extract_module_spec(&module_name, &execution_plan.modules)?;
             module_specs.push(spec);
         }
         
@@ -671,7 +673,7 @@ impl ModuleLoader {
         Ok(resolved_specs)
     }
     
-    fn resolve_module_spec(
+    fn extract_module_spec(
         &self,
         module_name: &str,
         defined_modules: &[ModuleSpec],
@@ -919,12 +921,12 @@ impl Module for MyCustomModule {
 
 ### Integration Examples
 ```rust
-// Module loading in binary compilation
-let module_loader = ModuleLoader::new();
-let required_modules = module_loader.discover_modules(&execution_plan).await?;
-let loaded_modules = module_loader.load_modules(&required_modules).await?;
-let compiled_modules = module_loader.compile_modules(&loaded_modules, &target_triple).await?;
+// Module compilation in binary compilation
+let module_compiler = ModuleCompiler::new();
+let required_modules = module_compiler.extract_module_requirements(&execution_plan).await?;
+let loaded_modules = module_compiler.load_modules(&required_modules).await?;
+let compiled_modules = module_compiler.compile_modules(&loaded_modules, &target_triple).await?;
 
 // Binary compilation with modules
-let binary = compiler.compile_binary_with_modules(&compilation, &compiled_modules).await?;
+let binary = binary_compiler.compile_binary_with_modules(&compilation, &compiled_modules).await?;
 ```

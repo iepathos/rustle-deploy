@@ -1,36 +1,37 @@
-# Spec 030: Inventory Parsing and Host Management
+# Spec 030: Inventory Processing and Host Management
 
 ## Feature Summary
 
-Implement comprehensive inventory parsing and host management to process inventory files from rustle-plan and generate deployment targets. This component handles multiple inventory formats (YAML, JSON, INI) and extracts host information, connection details, and target architecture information needed for binary deployment.
+Implement inventory processing and host management to convert parsed inventory data from rustle-plan into deployment targets. This component processes structured inventory data and extracts host information, connection details, and target architecture information needed for binary deployment.
 
-**Problem it solves**: rustle-deploy currently has placeholder inventory parsing that returns hardcoded data, preventing real deployment to multiple hosts with proper connection configurations.
+**Problem it solves**: rustle-deploy currently has placeholder inventory processing that returns hardcoded data, preventing real deployment to multiple hosts with proper connection configurations.
 
-**High-level approach**: Create a flexible inventory parser that supports multiple formats, extracts host metadata, determines target architectures, and generates properly configured deployment targets.
+**High-level approach**: Create a flexible inventory processor that converts structured inventory data from rustle-plan, extracts host metadata, determines target architectures, and generates properly configured deployment targets.
+
+**Note**: This spec focuses on inventory data processing, not raw file parsing. Raw inventory file parsing (YAML, JSON, INI) is handled by rustle-parse in the modular architecture pipeline.
 
 ## Goals & Requirements
 
 ### Functional Requirements
-- Parse YAML, JSON, and INI inventory formats
+- Process structured inventory data from rustle-plan output
 - Extract host connection information (SSH, WinRM, local)
 - Determine target architecture for each host
 - Support host groups and nested group structures
 - Handle host variables and group variables
-- Support dynamic inventory sources (scripts, URLs)
 - Generate deployment targets from inventory data
 - Validate host connectivity and requirements
-- Support Ansible-compatible inventory formats
+- Convert between inventory formats for compatibility
 - Handle inventory variable inheritance
 
 ### Non-functional Requirements
-- **Performance**: Parse inventory with 1000+ hosts in <200ms
-- **Reliability**: 99.9%+ parsing success rate for valid inventories
-- **Compatibility**: Support Ansible inventory format v2.0+
-- **Memory**: Efficient parsing for inventories up to 50MB
+- **Performance**: Process inventory with 1000+ hosts in <200ms
+- **Reliability**: 99.9%+ processing success rate for valid inventory data
+- **Compatibility**: Support inventory data from rustle-plan output
+- **Memory**: Efficient processing for inventories up to 50MB
 - **Security**: Secure handling of connection credentials
 
 ### Success Criteria
-- Successfully parse all major inventory formats
+- Successfully process inventory data from rustle-plan
 - Correctly extract host connection information
 - Determine target architectures automatically
 - Generate valid deployment targets
@@ -134,22 +135,20 @@ impl ArchitectureDetector {
 }
 ```
 
-### Parser API
+### Processor API
 
 ```rust
-pub struct InventoryParser {
+pub struct InventoryProcessor {
     detector: ArchitectureDetector,
     validators: Vec<Box<dyn InventoryValidator>>,
 }
 
-impl InventoryParser {
+impl InventoryProcessor {
     pub fn new() -> Self;
     
-    pub fn parse(&self, content: &str, format: InventoryFormat) -> Result<ParsedInventory, InventoryError>;
+    pub fn process_from_plan(&self, plan_output: &serde_json::Value) -> Result<ParsedInventory, InventoryError>;
     
-    pub fn parse_file(&self, path: &str) -> Result<ParsedInventory, InventoryError>;
-    
-    pub fn parse_dynamic(&self, script: &str) -> Result<ParsedInventory, InventoryError>;
+    pub fn process_inventory_data(&self, inventory_data: &ParsedInventory) -> Result<ParsedInventory, InventoryError>;
     
     pub fn validate(&self, inventory: &ParsedInventory) -> Result<(), ValidationError>;
     
@@ -162,49 +161,29 @@ impl InventoryParser {
     pub fn probe_host_info(&self, host: &InventoryHost) -> Result<HostInfo, ProbeError>;
 }
 
-/// YAML inventory parser
-pub struct YamlInventoryParser;
+/// JSON inventory processor (rustle-plan output)
+pub struct JsonInventoryProcessor;
 
-impl YamlInventoryParser {
-    pub fn parse(content: &str) -> Result<ParsedInventory, InventoryError>;
-    
-    fn parse_hosts_section(
-        &self, 
-        hosts: &serde_yaml::Value
-    ) -> Result<HashMap<String, InventoryHost>, InventoryError>;
-    
-    fn parse_groups_section(
-        &self, 
-        groups: &serde_yaml::Value
-    ) -> Result<HashMap<String, InventoryGroup>, InventoryError>;
-    
-    fn parse_vars_section(
-        &self, 
-        vars: &serde_yaml::Value
-    ) -> Result<HashMap<String, serde_json::Value>, InventoryError>;
-}
-
-/// JSON inventory parser (rustle-plan output)
-pub struct JsonInventoryParser;
-
-impl JsonInventoryParser {
-    pub fn parse(content: &str) -> Result<ParsedInventory, InventoryError>;
-    
-    pub fn from_rustle_plan_output(
+impl JsonInventoryProcessor {
+    pub fn process_from_plan_output(
         &self, 
         plan_output: &serde_json::Value
     ) -> Result<ParsedInventory, InventoryError>;
-}
-
-/// INI inventory parser (Ansible format)
-pub struct IniInventoryParser;
-
-impl IniInventoryParser {
-    pub fn parse(content: &str) -> Result<ParsedInventory, InventoryError>;
     
-    fn parse_host_line(&self, line: &str) -> Result<(String, InventoryHost), InventoryError>;
+    pub fn extract_inventory_section(
+        &self,
+        plan_output: &serde_json::Value
+    ) -> Result<serde_json::Value, InventoryError>;
     
-    fn parse_group_section(&self, lines: &[String]) -> Result<InventoryGroup, InventoryError>;
+    pub fn process_hosts_data(
+        &self, 
+        hosts_data: &serde_json::Value
+    ) -> Result<HashMap<String, InventoryHost>, InventoryError>;
+    
+    pub fn process_groups_data(
+        &self, 
+        groups_data: &serde_json::Value
+    ) -> Result<HashMap<String, InventoryGroup>, InventoryError>;
 }
 
 /// Host information detection
@@ -302,11 +281,8 @@ pub enum ProbeError {
 ```
 src/inventory/
 ├── mod.rs                     # Module exports
-├── parser.rs                  # Main InventoryParser
-├── yaml_parser.rs             # YAML format parser
-├── json_parser.rs             # JSON format parser  
-├── ini_parser.rs              # INI format parser
-├── dynamic_parser.rs          # Dynamic inventory support
+├── processor.rs               # Main InventoryProcessor
+├── plan_processor.rs          # Process rustle-plan output
 ├── validator.rs               # Inventory validation
 ├── detector.rs                # Architecture detection
 ├── host_info.rs               # Host information probing
@@ -317,45 +293,46 @@ src/types/
 ├── inventory.rs               # Inventory data structures
 
 tests/inventory/
-├── parser_tests.rs
-├── yaml_tests.rs
-├── json_tests.rs
-├── ini_tests.rs
+├── processor_tests.rs
+├── plan_processor_tests.rs
 ├── detection_tests.rs
 ├── validation_tests.rs
 └── fixtures/
-    ├── ansible_inventory.yml
-    ├── simple_inventory.json
-    ├── complex_inventory.ini
-    ├── rustle_plan_output.json
-    └── invalid_inventories/
+    ├── rustle_plan_outputs/
+    │   ├── simple_plan.json
+    │   ├── complex_plan.json
+    │   └── multi_host_plan.json
+    ├── inventory_data/
+    │   ├── simple_inventory.json
+    │   └── complex_inventory.json
+    └── invalid_data/
 ```
 
 ## Implementation Details
 
-### Phase 1: Basic Parsing
-1. Implement YAML and JSON inventory parsers
+### Phase 1: Basic Processing
+1. Implement rustle-plan output processor
 2. Create basic host and group data structures
-3. Add inventory format auto-detection
+3. Add deployment target generation
 4. Integrate with existing deployment workflow
 
 ### Phase 2: Advanced Features
-1. Add INI format support for Ansible compatibility
-2. Implement variable resolution and inheritance
-3. Create architecture detection and mapping
-4. Add host connectivity validation
+1. Implement variable resolution and inheritance
+2. Create architecture detection and mapping
+3. Add host connectivity validation
+4. Support complex inventory structures
 
-### Phase 3: Dynamic Inventory
-1. Support dynamic inventory scripts
-2. Add URL-based inventory loading
-3. Implement caching for dynamic sources
-4. Create inventory merge capabilities
+### Phase 3: Optimization
+1. Add inventory data caching
+2. Implement parallel processing
+3. Create performance optimizations
+4. Add comprehensive validation
 
 ### Key Algorithms
 
 **Variable Resolution with Inheritance**:
 ```rust
-impl InventoryParser {
+impl InventoryProcessor {
     fn resolve_variables(&self, inventory: &mut ParsedInventory) -> Result<(), VariableError> {
         for host_name in inventory.hosts.keys().cloned().collect::<Vec<_>>() {
             let mut resolved_vars = inventory.global_vars.clone();
@@ -460,7 +437,7 @@ impl ArchitectureDetector {
 
 **Deployment Target Generation**:
 ```rust
-impl InventoryParser {
+impl InventoryProcessor {
     pub fn to_deployment_targets(&self, inventory: &ParsedInventory) -> Result<Vec<DeploymentTarget>, ConversionError> {
         let mut targets = Vec::new();
         
@@ -636,20 +613,21 @@ max_concurrent_probes = 10
 
 ### Integration Examples
 ```rust
-// Parse from rustle-plan output
+// Process from rustle-plan output
 let plan_output: serde_json::Value = serde_json::from_str(&rustle_plan_json)?;
-let inventory = JsonInventoryParser.from_rustle_plan_output(&plan_output)?;
+let processor = InventoryProcessor::new();
+let inventory = processor.process_from_plan(&plan_output)?;
 
-// Parse traditional Ansible inventory
-let yaml_content = std::fs::read_to_string("inventory.yml")?;
-let inventory = parser.parse(&yaml_content, InventoryFormat::Yaml)?;
+// Process pre-parsed inventory data
+let inventory_data = load_inventory_data_from_cache()?;
+let processed_inventory = processor.process_inventory_data(&inventory_data)?;
 
 // Convert to deployment targets
-let targets = parser.to_deployment_targets(&inventory)?;
+let targets = processor.to_deployment_targets(&processed_inventory)?;
 
 // Integration with deployment manager
 let deployment_plan = manager.create_deployment_plan_from_inventory(
     &execution_plan,
-    &inventory,
+    &processed_inventory,
 ).await?;
 ```
