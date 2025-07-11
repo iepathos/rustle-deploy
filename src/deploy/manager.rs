@@ -1,4 +1,5 @@
 use crate::deploy::{BinaryCompiler, BinaryDeployer, CompilationCache, DeployError, Result};
+use crate::execution::{ExecutionPlan, ExecutionPlanParser, PlanFormat};
 use crate::types::*;
 use chrono::Utc;
 use tracing::{debug, info, warn};
@@ -9,6 +10,7 @@ pub struct DeploymentManager {
     compiler: BinaryCompiler,
     deployer: BinaryDeployer,
     cache: CompilationCache,
+    parser: ExecutionPlanParser,
 }
 
 impl DeploymentManager {
@@ -16,31 +18,30 @@ impl DeploymentManager {
         let cache = CompilationCache::new(config.cache_dir.clone());
         let compiler = BinaryCompiler::new(cache.clone());
         let deployer = BinaryDeployer::new();
+        let parser = ExecutionPlanParser::new();
 
         Self {
             config,
             compiler,
             deployer,
             cache,
+            parser,
         }
     }
 
-    pub async fn create_deployment_plan(
+    pub async fn create_deployment_plan_from_execution(
         &self,
-        execution_plan: &str, // JSON string of execution plan
-        inventory: &str,      // JSON string of parsed inventory
+        execution_plan: &ExecutionPlan,
+        targets: &[DeploymentTarget],
     ) -> Result<DeploymentPlan> {
         info!("Creating deployment plan");
 
-        let execution_plan_hash = self.calculate_hash(execution_plan);
+        let execution_plan_hash = self.calculate_hash_from_plan(execution_plan);
         let deployment_id = Uuid::new_v4().to_string();
-
-        // Parse inventory to extract target hosts and architectures
-        let targets = self.parse_inventory_targets(inventory)?;
 
         // Create binary compilations for each unique target architecture
         let binary_compilations =
-            self.create_binary_compilations(execution_plan, &targets, &deployment_id)?;
+            self.create_binary_compilations_from_plan(execution_plan, targets, &deployment_id)?;
 
         let deployment_plan = DeploymentPlan {
             metadata: DeploymentMetadata {
@@ -51,7 +52,7 @@ impl DeploymentManager {
                 compiler_version: self.get_compiler_version(),
             },
             binary_compilations,
-            deployment_targets: targets,
+            deployment_targets: targets.to_vec(),
             deployment_strategy: DeploymentStrategy::Parallel, // Default strategy
             rollback_info: None,
         };
@@ -61,6 +62,32 @@ impl DeploymentManager {
             deployment_plan.deployment_targets.len()
         );
         Ok(deployment_plan)
+    }
+
+    pub async fn create_deployment_plan(
+        &self,
+        execution_plan_content: &str,
+        format: PlanFormat,
+    ) -> Result<DeploymentPlan> {
+        // Parse the execution plan
+        let execution_plan = self
+            .parser
+            .parse(execution_plan_content, format)
+            .map_err(|e| {
+                DeployError::Configuration(format!("Failed to parse execution plan: {}", e))
+            })?;
+
+        // Extract deployment targets from the execution plan
+        let targets = self
+            .parser
+            .extract_deployment_targets(&execution_plan)
+            .map_err(|e| {
+                DeployError::Configuration(format!("Failed to extract deployment targets: {}", e))
+            })?;
+
+        // Create deployment plan using the structured data
+        self.create_deployment_plan_from_execution(&execution_plan, &targets)
+            .await
     }
 
     pub async fn compile_binaries(&self, plan: &DeploymentPlan) -> Result<Vec<BinaryCompilation>> {
@@ -257,6 +284,14 @@ impl DeploymentManager {
         format!("{:x}", hasher.finalize())
     }
 
+    fn calculate_hash_from_plan(&self, plan: &ExecutionPlan) -> String {
+        use sha2::{Digest, Sha256};
+        let serialized = serde_json::to_string(plan).unwrap_or_default();
+        let mut hasher = Sha256::new();
+        hasher.update(serialized.as_bytes());
+        format!("{:x}", hasher.finalize())
+    }
+
     fn get_compiler_version(&self) -> String {
         // TODO: Get actual rustc version
         "rustc 1.70.0".to_string()
@@ -282,9 +317,9 @@ impl DeploymentManager {
         }])
     }
 
-    fn create_binary_compilations(
+    fn create_binary_compilations_from_plan(
         &self,
-        execution_plan: &str,
+        execution_plan: &ExecutionPlan,
         targets: &[DeploymentTarget],
         deployment_id: &str,
     ) -> Result<Vec<BinaryCompilation>> {
@@ -307,19 +342,35 @@ impl DeploymentManager {
                 compilation_id: compilation_id.clone(),
                 binary_name: format!("rustle-runner-{target_triple}"),
                 target_triple: target_triple.clone(),
-                source_tasks: vec![], // TODO: Extract from execution plan
+                source_tasks: execution_plan
+                    .tasks
+                    .iter()
+                    .map(|t| t.name.clone())
+                    .collect(),
                 embedded_data: EmbeddedExecutionData {
-                    execution_plan: execution_plan.to_string(),
-                    module_implementations: vec![], // TODO: Extract modules
+                    execution_plan: serde_json::to_string(execution_plan).unwrap_or_default(),
+                    module_implementations: execution_plan
+                        .modules
+                        .iter()
+                        .map(|m| ModuleImplementation {
+                            module_name: m.name.clone(),
+                            source_code: String::new(), // TODO: Load actual module source
+                            dependencies: m.dependencies.clone(),
+                            static_linked: m.static_link,
+                        })
+                        .collect(),
                     static_files: vec![],
                     runtime_config: RuntimeConfig {
                         controller_endpoint: None,
-                        execution_timeout: std::time::Duration::from_secs(3600),
+                        execution_timeout: execution_plan
+                            .deployment_config
+                            .deployment_timeout
+                            .unwrap_or(std::time::Duration::from_secs(3600)),
                         report_interval: std::time::Duration::from_secs(60),
-                        cleanup_on_completion: true,
+                        cleanup_on_completion: execution_plan.deployment_config.cleanup_on_success,
                         log_level: "info".to_string(),
                     },
-                    facts_template: vec![],
+                    facts_template: execution_plan.facts_template.global_facts.clone(),
                 },
                 compilation_options: CompilationOptions {
                     optimization_level: OptimizationLevel::Release,

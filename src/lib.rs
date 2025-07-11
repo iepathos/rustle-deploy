@@ -5,6 +5,7 @@
 
 pub mod compiler;
 pub mod deploy;
+pub mod execution;
 pub mod types;
 
 pub use deploy::DeploymentManager;

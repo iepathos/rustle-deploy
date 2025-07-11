@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created_at": "2024-01-01T00:00:00Z",
+    "rustle_plan_version": "1.0.0",
+    "plan_id": "test-plan-001",
+    "description": "Simple test execution plan",
+    "author": "test-user",
+    "tags": ["test", "simple"]
+  },
+  "tasks": [
+    {
+      "id": "task-001",
+      "name": "Install package",
+      "task_type": "Package",
+      "module": "package",
+      "args": {
+        "name": "curl",
+        "state": "present"
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 300,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    }
+  ],
+  "inventory": {
+    "format": "Json",
+    "source": {
+      "Inline": {
+        "content": "{}"
+      }
+    },
+    "groups": {
+      "all": {
+        "hosts": ["test-host"],
+        "variables": {},
+        "children": []
+      }
+    },
+    "hosts": {
+      "test-host": {
+        "address": "test.example.com",
+        "connection": {
+          "method": "Ssh",
+          "username": "deploy",
+          "password": null,
+          "key_file": "/etc/deploy/id_rsa",
+          "port": 22,
+          "timeout": 30
+        },
+        "variables": {},
+        "target_triple": "x86_64-unknown-linux-gnu"
+      }
+    },
+    "variables": {}
+  },
+  "strategy": {
+    "parallel_limit": 10,
+    "fail_fast": true,
+    "retry_failed": false,
+    "rollback_on_failure": false
+  },
+  "facts_template": {
+    "global_facts": ["hostname", "architecture"],
+    "host_facts": ["memory", "disk"],
+    "custom_facts": {}
+  },
+  "deployment_config": {
+    "target_path": "/tmp/rustle-runner",
+    "backup_previous": true,
+    "verify_deployment": true,
+    "cleanup_on_success": true,
+    "deployment_timeout": 1800
+  },
+  "modules": [
+    {
+      "name": "package",
+      "source": "Builtin",
+      "version": null,
+      "checksum": null,
+      "dependencies": [],
+      "static_link": true
+    }
+  ]
+}

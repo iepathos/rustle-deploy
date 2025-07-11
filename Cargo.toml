@@ -29,6 +29,12 @@ tempfile = "3"
 chrono = { version = "0.4", features = ["serde"] }
 num_cpus = "1.0"
 dirs = "5.0"
+serde_yaml = "0.9"
+jsonschema = "0.18"
+handlebars = "4.5"
+petgraph = "0.6"
+url = "2.4"
+regex = "1.10"
 
 [build-dependencies]
 cargo_metadata = "0.18"
