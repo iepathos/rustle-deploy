@@ -148,7 +148,7 @@ rustle-deploy --rollback deployment-id-123
 # Run all tests
 cargo test
 
-# Integration tests with Docker
+# Integration tests
 cargo test --test integration -- --ignored
 
 # Cross-compilation tests
@@ -258,7 +258,7 @@ supported_targets = [
 ]
 
 [cross_compilation]
-use_docker = false
+use_zigbuild = true
 toolchain_auto_install = true
 ```
 
@@ -313,10 +313,9 @@ cargo build --release --target x86_64-unknown-linux-gnu
 cargo build --release --target aarch64-unknown-linux-gnu
 cargo build --release --target x86_64-apple-darwin
 
-# Docker-based cross-compilation
-docker run --rm -v "$PWD":/usr/src/myapp \
-  -w /usr/src/myapp rustembedded/cross:x86_64-unknown-linux-gnu \
-  cargo build --release --target x86_64-unknown-linux-gnu
+# Zig-based cross-compilation (recommended)
+cargo install cargo-zigbuild
+cargo zigbuild --release --target x86_64-unknown-linux-gnu
 ```
 
 ### Performance Optimization

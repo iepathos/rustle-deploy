@@ -898,7 +898,7 @@ tests/modules/
 ```
 tests/fixtures/
 ├── systems/
-│   ├── ubuntu_20_04/          # Docker containers for testing
+│   ├── ubuntu_20_04/          # Test system configurations
 │   ├── centos_8/
 │   ├── macos_12/
 │   └── windows_2019/

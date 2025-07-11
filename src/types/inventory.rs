@@ -71,7 +71,6 @@ pub enum ConnectionMethod {
     Ssh,
     WinRm,
     Local,
-    Docker,
     Podman,
 }
 

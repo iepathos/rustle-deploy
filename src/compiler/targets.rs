@@ -140,7 +140,7 @@ impl CrossCompiler {
                         "Cross-compilation toolchain not available: {}",
                         toolchain_name
                     );
-                    info!("Consider installing the required toolchain or using Docker for cross-compilation");
+                    info!("Consider installing the required toolchain or using cargo-zigbuild for cross-compilation");
                 }
             }
         }

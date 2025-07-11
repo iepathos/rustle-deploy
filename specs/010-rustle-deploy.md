@@ -643,7 +643,7 @@ cargo_metadata = "0.18"
 
 ### Environment Variables
 - `RUSTLE_DEPLOY_CACHE_DIR`: Compilation cache directory
-- `RUSTLE_CROSS_COMPILE_DOCKER`: Use Docker for cross-compilation
+- `RUSTLE_CROSS_COMPILE_ZIG`: Use Zig for cross-compilation
 - `RUSTLE_BINARY_SIZE_LIMIT`: Maximum binary size limit
 - `RUSTLE_DEPLOYMENT_TIMEOUT`: Default deployment timeout
 
@@ -673,8 +673,7 @@ supported_targets = [
 ]
 
 [cross_compilation]
-use_docker = false
-docker_image = "rustembedded/cross"
+use_zigbuild = true
 toolchain_auto_install = true
 ```
 

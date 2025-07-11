@@ -172,14 +172,12 @@ impl ArchitectureDetector {
         let cross_compiler_required = self.requires_cross_compilation(arch, &os_env);
         let linker_requirements = self.get_linker_requirements(arch, &os_env);
         let system_dependencies = self.get_system_dependencies(arch, &os_env);
-        let docker_image = self.get_docker_image(arch, &os_env);
 
         Ok(CrossCompilationInfo {
             target_triple: normalized_target,
             requires_cross_compiler: cross_compiler_required,
             linker_requirements,
             system_dependencies,
-            docker_image,
         })
     }
 
@@ -225,19 +223,6 @@ impl ArchitectureDetector {
         deps
     }
 
-    fn get_docker_image(&self, arch: &str, os_env: &str) -> Option<String> {
-        match (arch, os_env) {
-            ("x86_64", os) if os.contains("linux-gnu") => Some("rust:latest".to_string()),
-            ("aarch64", os) if os.contains("linux-gnu") => {
-                Some("rustembedded/cross:aarch64-unknown-linux-gnu".to_string())
-            }
-            ("arm", os) if os.contains("linux-gnueabihf") => {
-                Some("rustembedded/cross:arm-unknown-linux-gnueabihf".to_string())
-            }
-            _ => None,
-        }
-    }
-
     pub fn clear_cache(&mut self) {
         self.architecture_cache.clear();
     }
@@ -263,7 +248,6 @@ pub struct CrossCompilationInfo {
     pub requires_cross_compiler: bool,
     pub linker_requirements: Vec<String>,
     pub system_dependencies: Vec<String>,
-    pub docker_image: Option<String>,
 }
 
 #[cfg(test)]

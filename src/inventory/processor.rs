@@ -125,9 +125,6 @@ impl InventoryProcessor {
                     ),
                 },
                 crate::types::inventory::ConnectionMethod::Local => DeploymentMethod::Scp,
-                crate::types::inventory::ConnectionMethod::Docker => DeploymentMethod::Custom {
-                    command: format!("docker cp {{binary_path}} {host_name}:/tmp/rustle-runner"),
-                },
                 crate::types::inventory::ConnectionMethod::Podman => DeploymentMethod::Custom {
                     command: format!("podman cp {{binary_path}} {host_name}:/tmp/rustle-runner"),
                 },
