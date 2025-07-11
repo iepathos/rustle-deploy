@@ -17,6 +17,7 @@ This document tracks the status of all specification documents in the project.
 | 040 | Runtime Execution Engine | ⬜ Planned |
 | 050 | Module System Integration | ⬜ Planned |
 | 060 | Rustle Plan Output Compatibility | ⬜ Planned |
+| 070 | Core Execution Modules | ⬜ Planned |
 
 ## Notes
 
