@@ -1,5 +1,5 @@
 use anyhow::Result;
-use jsonschema::{Draft, JSONSchema};
+use jsonschema::{Draft, Validator};
 use serde_json::Value;
 use thiserror::Error;
 
@@ -119,30 +119,24 @@ pub enum ExtractionError {
 }
 
 pub struct SchemaValidator {
-    schema: JSONSchema,
+    schema: Validator,
 }
 
 impl SchemaValidator {
     pub fn new() -> Result<Self> {
         let schema_json = Self::get_rustle_plan_schema();
-        let schema = JSONSchema::options()
+        let schema = Validator::options()
             .with_draft(Draft::Draft7)
-            .compile(&schema_json)
+            .build(&schema_json)
             .map_err(|e| anyhow::anyhow!("Failed to compile schema: {}", e))?;
 
         Ok(Self { schema })
     }
 
     pub fn validate(&self, value: &Value) -> Result<(), ValidationError> {
-        let result = self.schema.validate(value);
-
-        if let Err(errors) = result {
-            let error_messages: Vec<String> = errors
-                .map(|error| format!("{}: {}", error.instance_path, error))
-                .collect();
-
+        if let Err(validation_error) = self.schema.validate(value) {
             return Err(ValidationError::Schema {
-                details: error_messages.join("; "),
+                details: validation_error.to_string(),
             });
         }
 
