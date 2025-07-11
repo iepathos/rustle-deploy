@@ -20,6 +20,7 @@ This document tracks the status of all specification documents in the project.
 | 070 | Core Execution Modules | ⬜ Planned |
 | 080 | Binary Template Generation | ⬜ Planned |
 | 090 | Cross-Compilation Infrastructure | ⬜ Planned |
+| 100 | Zero-Infrastructure Cross-Compilation | ⬜ Planned |
 
 ## Notes
 
