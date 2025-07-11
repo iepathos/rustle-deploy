@@ -19,7 +19,8 @@ This document tracks the status of all specification documents in the project.
 
 | Spec | Feature | Status |
 |------|---------|--------|
-| 090 | Zero-Infrastructure Cross-Compilation | ⬜ Planned |
+| 090 | Zero-Infrastructure Cross-Compilation | ✅ Complete |
+| 100 | Binary Compilation Pipeline | ⬜ Planned |
 
 ## Notes
 
