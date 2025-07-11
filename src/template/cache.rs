@@ -26,7 +26,7 @@ impl TemplateCache {
         Self {
             enabled,
             cache: Arc::new(RwLock::new(HashMap::new())),
-            max_size: 100,                 // Cache up to 100 templates
+            max_size: 100,                                  // Cache up to 100 templates
             ttl: <Duration as DurationExt>::from_hours(24), // 24 hour TTL
         }
     }
@@ -203,8 +203,8 @@ impl DurationExt for Duration {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::deployment::RuntimeConfig;
     use crate::template::{EmbeddedData, EncryptedSecrets, TargetInfo};
+    use crate::types::deployment::RuntimeConfig;
     use crate::types::Platform;
     use std::collections::HashMap;
 
