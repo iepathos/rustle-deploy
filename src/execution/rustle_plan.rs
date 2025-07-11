@@ -129,6 +129,17 @@ pub struct BinaryDeploymentPlan {
     #[serde(with = "serde_duration")]
     pub estimated_savings: Duration,
     pub compilation_requirements: CompilationRequirements,
+    // Template generation fields
+    pub controller_endpoint: Option<String>,
+    #[serde(with = "serde_duration_opt")]
+    pub execution_timeout: Option<Duration>,
+    #[serde(with = "serde_duration_opt")]
+    pub report_interval: Option<Duration>,
+    pub cleanup_on_completion: Option<bool>,
+    pub log_level: Option<String>,
+    pub max_retries: Option<u32>,
+    pub static_files: Vec<StaticFileRef>,
+    pub secrets: Vec<SecretRef>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -138,6 +149,28 @@ pub struct CompilationRequirements {
     pub target_triple: String,
     pub optimization_level: String,
     pub features: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaticFileRef {
+    pub source_path: String,
+    pub target_path: String,
+    pub permissions: Option<u32>,
+    pub compress: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SecretRef {
+    pub key: String,
+    pub source: SecretSource,
+    pub target_env_var: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SecretSource {
+    File { path: String },
+    Environment { var: String },
+    Vault { path: String, key: String },
 }
 
 #[derive(Debug, Clone)]

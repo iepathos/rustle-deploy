@@ -120,9 +120,7 @@ impl ModuleValidator {
 
         for (pattern, description) in &suspicious_patterns {
             if self.contains_pattern(&module.source_code.main_file, pattern) {
-                result.add_warning(format!(
-                    "Module contains suspicious pattern: {description}"
-                ));
+                result.add_warning(format!("Module contains suspicious pattern: {description}"));
             }
         }
 

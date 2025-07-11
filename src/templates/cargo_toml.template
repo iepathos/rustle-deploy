@@ -1,0 +1,32 @@
+[package]
+name = "rustle-runner"
+version = "1.0.0"
+edition = "2021"
+
+[[bin]]
+name = "rustle-runner"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+reqwest = { version = "0.11", features = ["json"] }
+{{#each dependencies}}
+{{name}} = "{{version}}"{{#if features}} features = [{{#each features}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+{{/each}}
+
+[profile.release]
+opt-level = {{optimization_level}}
+{{#if lto}}lto = true{{/if}}
+{{#if strip}}strip = true{{/if}}
+{{#if panic_abort}}panic = "abort"{{/if}}
+codegen-units = 1
+
+{{#if target_triple}}
+[target.'{{target_triple}}']
+rustflags = ["-C", "target-cpu=native"]
+{{/if}}

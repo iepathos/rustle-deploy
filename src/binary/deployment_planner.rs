@@ -110,6 +110,14 @@ impl BinaryDeploymentPlanner {
             task_ids,
             estimated_savings,
             compilation_requirements,
+            controller_endpoint: None,
+            execution_timeout: None,
+            report_interval: None,
+            cleanup_on_completion: None,
+            log_level: None,
+            max_retries: None,
+            static_files: vec![],
+            secrets: vec![],
         })
     }
 

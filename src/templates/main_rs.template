@@ -1,0 +1,366 @@
+use std::collections::HashMap;
+use std::time::Duration;
+use tokio::time::{timeout, sleep};
+use serde_json::Value;
+use anyhow::{Result, Context};
+use tracing::{info, debug, error, instrument};
+
+mod embedded_data {
+    use super::*;
+    
+    pub const EXECUTION_PLAN: &str = r#"{{execution_plan}}"#;
+    pub const RUNTIME_CONFIG: &str = r#"{{runtime_config}}"#;
+    
+    pub fn get_static_files() -> HashMap<&'static str, &'static [u8]> {
+        let mut files = HashMap::new();
+{{static_files}}
+        files
+    }
+}
+
+mod modules {
+    use super::*;
+{{module_implementations}}
+}
+
+mod runtime {
+    use super::*;
+    
+    pub struct LocalExecutor {
+        config: RuntimeConfig,
+        facts: HashMap<String, Value>,
+    }
+    
+    impl LocalExecutor {
+        pub fn new(config: RuntimeConfig) -> Self {
+            Self {
+                config,
+                facts: HashMap::new(),
+            }
+        }
+        
+        #[instrument(skip(self))]
+        pub async fn execute_plan(&mut self, plan: RustlePlanOutput) -> Result<ExecutionReport> {
+            info!("Starting execution of plan with {} tasks", plan.total_tasks);
+            let mut results = Vec::new();
+            
+            for play in &plan.plays {
+                debug!("Executing play: {}", play.play_id);
+                let play_result = self.execute_play(play).await?;
+                results.push(play_result);
+            }
+            
+            let success = results.iter().all(|r| r.success);
+            info!("Execution completed. Success: {}", success);
+            
+            Ok(ExecutionReport {
+                success,
+                results,
+                execution_time: std::time::Instant::now().elapsed(),
+            })
+        }
+        
+        async fn execute_play(&mut self, play: &PlayPlan) -> Result<PlayResult> {
+            let mut task_results = Vec::new();
+            
+            for batch in &play.batches {
+                let batch_result = self.execute_batch(batch).await?;
+                task_results.extend(batch_result.task_results);
+            }
+            
+            Ok(PlayResult {
+                play_id: play.play_id.clone(),
+                success: task_results.iter().all(|r| !r.failed),
+                task_results,
+            })
+        }
+        
+        async fn execute_batch(&mut self, batch: &TaskBatch) -> Result<BatchResult> {
+            let mut task_results = Vec::new();
+            
+            for task in &batch.tasks {
+                debug!("Executing task: {} (module: {})", task.task_id, task.module);
+                
+                let result = if let Some(timeout_duration) = self.config.execution_timeout {
+                    timeout(timeout_duration, self.execute_task(task)).await
+                        .context("Task execution timed out")?
+                } else {
+                    self.execute_task(task).await
+                };
+                
+                match result {
+                    Ok(task_result) => {
+                        info!("Task {} completed successfully", task.task_id);
+                        task_results.push(task_result);
+                    }
+                    Err(e) => {
+                        error!("Task {} failed: {}", task.task_id, e);
+                        task_results.push(TaskResult {
+                            task_id: task.task_id.clone(),
+                            module_result: ModuleResult {
+                                changed: false,
+                                failed: true,
+                                msg: Some(format!("Task failed: {}", e)),
+                                stdout: None,
+                                stderr: Some(e.to_string()),
+                                rc: Some(1),
+                                results: HashMap::new(),
+                            },
+                            start_time: std::time::SystemTime::now(),
+                            duration: Duration::from_millis(0),
+                        });
+                    }
+                }
+            }
+            
+            Ok(BatchResult {
+                batch_id: batch.batch_id.clone(),
+                task_results,
+            })
+        }
+        
+        async fn execute_task(&mut self, task: &TaskPlan) -> Result<TaskResult> {
+            let start_time = std::time::SystemTime::now();
+            let execution_start = std::time::Instant::now();
+            
+            // Execute module based on type
+            let module_result = match task.module.as_str() {
+                "command" | "shell" => {
+                    modules::command::execute(task.args.clone()).await?
+                }
+                "package" => {
+                    modules::package::execute(task.args.clone()).await?
+                }
+                "service" => {
+                    modules::service::execute(task.args.clone()).await?
+                }
+                "debug" => {
+                    modules::debug::execute(task.args.clone()).await?
+                }
+                _ => {
+                    return Err(anyhow::anyhow!("Unsupported module: {}", task.module));
+                }
+            };
+            
+            let duration = execution_start.elapsed();
+            
+            // Update facts if the module returned any
+            if let Some(facts) = module_result.results.get("ansible_facts") {
+                if let Value::Object(fact_map) = facts {
+                    for (key, value) in fact_map {
+                        self.facts.insert(key.clone(), value.clone());
+                    }
+                }
+            }
+            
+            Ok(TaskResult {
+                task_id: task.task_id.clone(),
+                module_result,
+                start_time,
+                duration,
+            })
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Initialize logging
+    tracing_subscriber::fmt::init();
+    
+    info!("Starting Rustle binary executor");
+    
+    // Parse embedded execution plan
+    let execution_plan: RustlePlanOutput = serde_json::from_str(embedded_data::EXECUTION_PLAN)
+        .context("Failed to parse embedded execution plan")?;
+    
+    let runtime_config: RuntimeConfig = serde_json::from_str(embedded_data::RUNTIME_CONFIG)
+        .context("Failed to parse runtime configuration")?;
+    
+    info!("Loaded execution plan with {} total tasks", execution_plan.total_tasks);
+    
+    // Setup platform-specific signal handlers
+    #[cfg(unix)]
+    setup_unix_signal_handlers().await?;
+    
+    #[cfg(windows)]
+    setup_windows_signal_handlers().await?;
+    
+    // Create executor
+    let mut executor = runtime::LocalExecutor::new(runtime_config.clone());
+    
+    // Execute plan
+    let start_time = std::time::Instant::now();
+    let result = executor.execute_plan(execution_plan).await
+        .context("Execution plan failed")?;
+    
+    let execution_time = start_time.elapsed();
+    
+    // Report results
+    if let Some(controller_endpoint) = &runtime_config.controller_endpoint {
+        info!("Reporting results to controller: {}", controller_endpoint);
+        report_to_controller(controller_endpoint, &result).await
+            .context("Failed to report results to controller")?;
+    }
+    
+    // Cleanup if requested
+    if runtime_config.cleanup_on_completion {
+        info!("Performing cleanup");
+        cleanup_runtime().await?;
+    }
+    
+    if result.success {
+        info!("Execution completed successfully in {:?}", execution_time);
+        std::process::exit(0);
+    } else {
+        error!("Execution failed after {:?}", execution_time);
+        std::process::exit(1);
+    }
+}
+
+async fn report_to_controller(endpoint: &str, result: &ExecutionReport) -> Result<()> {
+    let client = reqwest::Client::new();
+    let response = client
+        .post(endpoint)
+        .json(result)
+        .send()
+        .await?;
+    
+    if response.status().is_success() {
+        info!("Successfully reported results to controller");
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!("Controller reported error: {}", response.status()))
+    }
+}
+
+async fn cleanup_runtime() -> Result<()> {
+    // Clean up temporary files and resources
+    if let Ok(current_exe) = std::env::current_exe() {
+        tokio::fs::remove_file(current_exe).await.ok();
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+async fn setup_unix_signal_handlers() -> Result<()> {
+    use tokio::signal::unix::{signal, SignalKind};
+    
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigint = signal(SignalKind::interrupt())?;
+    
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = sigterm.recv() => {
+                info!("Received SIGTERM, shutting down gracefully");
+                std::process::exit(0);
+            }
+            _ = sigint.recv() => {
+                info!("Received SIGINT, shutting down gracefully");
+                std::process::exit(0);
+            }
+        }
+    });
+    
+    Ok(())
+}
+
+#[cfg(windows)]
+async fn setup_windows_signal_handlers() -> Result<()> {
+    use tokio::signal::windows::{ctrl_c, ctrl_break};
+    
+    let mut ctrl_c_stream = ctrl_c()?;
+    let mut ctrl_break_stream = ctrl_break()?;
+    
+    tokio::spawn(async move {
+        tokio::select! {
+            _ = ctrl_c_stream.recv() => {
+                info!("Received Ctrl+C, shutting down gracefully");
+                std::process::exit(0);
+            }
+            _ = ctrl_break_stream.recv() => {
+                info!("Received Ctrl+Break, shutting down gracefully");
+                std::process::exit(0);
+            }
+        }
+    });
+    
+    Ok(())
+}
+
+// Type definitions for embedded data structures
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RustlePlanOutput {
+    pub plays: Vec<PlayPlan>,
+    pub total_tasks: u32,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct PlayPlan {
+    pub play_id: String,
+    pub batches: Vec<TaskBatch>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct TaskBatch {
+    pub batch_id: String,
+    pub tasks: Vec<TaskPlan>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct TaskPlan {
+    pub task_id: String,
+    pub module: String,
+    pub args: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct RuntimeConfig {
+    pub controller_endpoint: Option<String>,
+    pub execution_timeout: Option<Duration>,
+    pub report_interval: Duration,
+    pub cleanup_on_completion: bool,
+    pub log_level: String,
+    pub heartbeat_interval: Duration,
+    pub max_retries: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct ExecutionReport {
+    pub success: bool,
+    pub results: Vec<PlayResult>,
+    pub execution_time: Duration,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct PlayResult {
+    pub play_id: String,
+    pub success: bool,
+    pub task_results: Vec<TaskResult>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct BatchResult {
+    pub batch_id: String,
+    pub task_results: Vec<TaskResult>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct TaskResult {
+    pub task_id: String,
+    pub module_result: ModuleResult,
+    pub start_time: std::time::SystemTime,
+    pub duration: Duration,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct ModuleResult {
+    pub changed: bool,
+    pub failed: bool,
+    pub msg: Option<String>,
+    pub stdout: Option<String>,
+    pub stderr: Option<String>,
+    pub rc: Option<i32>,
+    pub results: HashMap<String, Value>,
+}

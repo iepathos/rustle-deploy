@@ -47,6 +47,14 @@ impl BinaryDeploymentAnalyzer {
                         optimization_level: "release".to_string(),
                         features: vec!["binary-deployment".to_string()],
                     },
+                    controller_endpoint: None,
+                    execution_timeout: None,
+                    report_interval: None,
+                    cleanup_on_completion: None,
+                    log_level: None,
+                    max_retries: None,
+                    static_files: vec![],
+                    secrets: vec![],
                 };
 
                 deployments.push(deployment);

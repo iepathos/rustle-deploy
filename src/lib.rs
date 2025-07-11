@@ -12,6 +12,7 @@ pub mod execution;
 pub mod inventory;
 pub mod modules;
 pub mod runtime;
+pub mod template;
 pub mod types;
 
 pub use deploy::DeploymentManager;
