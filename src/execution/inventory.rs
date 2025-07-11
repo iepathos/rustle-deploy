@@ -33,8 +33,7 @@ impl InventoryParser {
                 if !parsed.groups.contains_key(child) {
                     return Err(ValidationError::InvalidInventory {
                         reason: format!(
-                            "Group '{}' references non-existent child group '{}'",
-                            group_id, child
+                            "Group '{group_id}' references non-existent child group '{child}'"
                         ),
                     });
                 }
@@ -47,8 +46,7 @@ impl InventoryParser {
                 if !parsed.hosts.contains_key(host_id) {
                     return Err(ValidationError::InvalidInventory {
                         reason: format!(
-                            "Group '{}' references non-existent host '{}'",
-                            group_id, host_id
+                            "Group '{group_id}' references non-existent host '{host_id}'"
                         ),
                     });
                 }

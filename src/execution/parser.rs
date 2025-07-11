@@ -72,7 +72,7 @@ impl ExecutionPlanParser {
         let mut targets = Vec::new();
 
         // Extract hosts from inventory
-        for (_host_id, host) in &plan.inventory.hosts {
+        for host in plan.inventory.hosts.values() {
             let target_triple = host
                 .target_triple
                 .clone()
@@ -81,7 +81,7 @@ impl ExecutionPlanParser {
             targets.push(DeploymentTarget {
                 host: host.address.clone(),
                 target_path: plan.deployment_config.target_path.clone(),
-                binary_compilation_id: format!("rustle-{}", target_triple),
+                binary_compilation_id: format!("rustle-{target_triple}"),
                 deployment_method: crate::types::DeploymentMethod::Ssh,
                 status: crate::types::DeploymentStatus::Pending,
                 deployed_at: None,
@@ -207,11 +207,11 @@ impl ExecutionPlanParser {
         let mut rec_stack = HashSet::new();
 
         for task in tasks {
-            if !visited.contains(&task.id) {
-                if self.has_cycle(&graph, &task.id, &mut visited, &mut rec_stack) {
-                    let cycle = self.find_cycle(&graph);
-                    return Err(DependencyError::CircularDependencies { cycle });
-                }
+            if !visited.contains(&task.id)
+                && Self::has_cycle(&graph, &task.id, &mut visited, &mut rec_stack)
+            {
+                let cycle = self.find_cycle(&graph);
+                return Err(DependencyError::CircularDependencies { cycle });
             }
         }
 
@@ -219,7 +219,6 @@ impl ExecutionPlanParser {
     }
 
     fn has_cycle(
-        &self,
         graph: &HashMap<String, Vec<String>>,
         node: &str,
         visited: &mut HashSet<String>,
@@ -231,7 +230,7 @@ impl ExecutionPlanParser {
         if let Some(neighbors) = graph.get(node) {
             for neighbor in neighbors {
                 if !visited.contains(neighbor) {
-                    if self.has_cycle(graph, neighbor, visited, rec_stack) {
+                    if Self::has_cycle(graph, neighbor, visited, rec_stack) {
                         return true;
                     }
                 } else if rec_stack.contains(neighbor) {
@@ -258,6 +257,12 @@ impl Default for ExecutionPlanParser {
 
 pub struct SchemaValidator {
     _json_schema: serde_json::Value,
+}
+
+impl Default for SchemaValidator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SchemaValidator {
@@ -289,6 +294,12 @@ impl SchemaValidator {
 
 pub struct TemplateProcessor {
     _engine: TemplateEngine,
+}
+
+impl Default for TemplateProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TemplateProcessor {

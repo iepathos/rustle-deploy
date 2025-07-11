@@ -74,7 +74,7 @@ impl DeploymentManager {
             .parser
             .parse(execution_plan_content, format)
             .map_err(|e| {
-                DeployError::Configuration(format!("Failed to parse execution plan: {}", e))
+                DeployError::Configuration(format!("Failed to parse execution plan: {e}"))
             })?;
 
         // Extract deployment targets from the execution plan
@@ -82,7 +82,7 @@ impl DeploymentManager {
             .parser
             .extract_deployment_targets(&execution_plan)
             .map_err(|e| {
-                DeployError::Configuration(format!("Failed to extract deployment targets: {}", e))
+                DeployError::Configuration(format!("Failed to extract deployment targets: {e}"))
             })?;
 
         // Create deployment plan using the structured data
@@ -277,13 +277,6 @@ impl DeploymentManager {
 
     // Helper methods
 
-    fn calculate_hash(&self, content: &str) -> String {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(content.as_bytes());
-        format!("{:x}", hasher.finalize())
-    }
-
     fn calculate_hash_from_plan(&self, plan: &ExecutionPlan) -> String {
         use sha2::{Digest, Sha256};
         let serialized = serde_json::to_string(plan).unwrap_or_default();
@@ -295,26 +288,6 @@ impl DeploymentManager {
     fn get_compiler_version(&self) -> String {
         // TODO: Get actual rustc version
         "rustc 1.70.0".to_string()
-    }
-
-    fn parse_inventory_targets(&self, _inventory: &str) -> Result<Vec<DeploymentTarget>> {
-        // TODO: Implement actual inventory parsing
-        // This would parse the inventory format (likely YAML or JSON) and extract:
-        // - Host information
-        // - Target architectures
-        // - Deployment paths
-        // - Connection details
-
-        // For now, return a placeholder
-        Ok(vec![DeploymentTarget {
-            host: "example.com".to_string(),
-            target_path: "/tmp/rustle-runner".to_string(),
-            binary_compilation_id: "placeholder".to_string(),
-            deployment_method: DeploymentMethod::Ssh,
-            status: DeploymentStatus::Pending,
-            deployed_at: None,
-            version: "1.0.0".to_string(),
-        }])
     }
 
     fn create_binary_compilations_from_plan(
