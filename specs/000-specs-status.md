@@ -13,12 +13,12 @@ This document tracks the status of all specification documents in the project.
 | 050 | Module System Integration | ✅ Complete |
 | 060 | Rustle Plan Output Compatibility | ✅ Complete |
 | 070 | Core Execution Modules | ✅ Complete |
+| 080 | Binary Template Generation | ✅ Complete |
 
 ## In Progress / Planned Specs
 
 | Spec | Feature | Status |
 |------|---------|--------|
-| 080 | Binary Template Generation | ⬜ Planned |
 | 090 | Zero-Infrastructure Cross-Compilation | ⬜ Planned |
 
 ## Notes
