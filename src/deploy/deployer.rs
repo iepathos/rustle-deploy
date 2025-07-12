@@ -155,7 +155,13 @@ impl BinaryDeployer {
         let setup_cmd = format!(
             "chmod +x {} && mkdir -p {} && mv {} {}",
             temp_path,
-            Path::new(&target.target_path).parent().unwrap().display(),
+            Path::new(&target.target_path)
+                .parent()
+                .ok_or_else(|| DeployError::DeploymentFailed {
+                    host: target.host.clone(),
+                    reason: format!("Invalid target path: {}", target.target_path),
+                })?
+                .display(),
             temp_path,
             target.target_path
         );

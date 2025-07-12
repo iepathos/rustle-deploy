@@ -395,7 +395,12 @@ async fn run_compilation(
     info!("Starting binary compilation pipeline");
 
     // Parse the actual execution plan from the file
-    let rustle_plan = parse_rustle_plan_from_file(cli.execution_plan.as_ref().unwrap()).await?;
+    let rustle_plan = parse_rustle_plan_from_file(
+        cli.execution_plan
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Execution plan is required for compilation"))?,
+    )
+    .await?;
 
     // Parse optimization level
     let optimization_level = match cli.optimization.as_str() {

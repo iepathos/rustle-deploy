@@ -53,6 +53,9 @@ pub enum ValidationError {
 
     #[error("Invalid inventory format: {reason}")]
     InvalidInventory { reason: String },
+
+    #[error("Schema violation in field '{field}': {reason}")]
+    SchemaViolation { field: String, reason: String },
 }
 
 #[derive(Debug, Error)]

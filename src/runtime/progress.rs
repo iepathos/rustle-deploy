@@ -78,18 +78,26 @@ impl ProgressReporter {
         self.send_event(&event).await
     }
 
-    pub async fn report_task_start(&self, task: &Task) -> Result<(), ReportError> {
+    pub async fn report_task_start(
+        &self,
+        execution_id: &str,
+        task: &Task,
+    ) -> Result<(), ReportError> {
         let event = ProgressEvent::TaskStarted {
-            execution_id: "default".to_string(), // TODO: Get from context
+            execution_id: execution_id.to_string(),
             task_id: task.id.clone(),
             task_name: task.name.clone(),
         };
         self.send_event(&event).await
     }
 
-    pub async fn report_task_complete(&self, result: &TaskResult) -> Result<(), ReportError> {
+    pub async fn report_task_complete(
+        &self,
+        execution_id: &str,
+        result: &TaskResult,
+    ) -> Result<(), ReportError> {
         let event = ProgressEvent::TaskCompleted {
-            execution_id: "default".to_string(), // TODO: Get from context
+            execution_id: execution_id.to_string(),
             task_result: result.clone(),
         };
         self.send_event(&event).await

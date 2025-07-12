@@ -68,6 +68,9 @@ pub enum ResolveError {
     #[error("I/O error during {operation}: {error}")]
     IoError { operation: String, error: String },
 
+    #[error("Not found: {name}")]
+    NotFound { name: String },
+
     #[error("Git error during {operation}: {error}")]
     GitError { operation: String, error: String },
 
@@ -130,6 +133,12 @@ pub enum CompileError {
 
     #[error("Rust compilation failed: {output}")]
     RustCompilationFailed { output: String },
+
+    #[error("Syntax error: {message}")]
+    SyntaxError { message: String },
+
+    #[error("Validation failed: {reason}")]
+    ValidationFailed { reason: String },
 
     #[error("Cross-compilation failed for target {target}: {error}")]
     CrossCompilationFailed { target: String, error: String },

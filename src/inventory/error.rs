@@ -82,6 +82,12 @@ pub enum VariableError {
 
     #[error("Invalid variable type: {variable}")]
     InvalidType { variable: String },
+
+    #[error("Invalid host: {host}")]
+    InvalidHost { host: String },
+
+    #[error("Internal error: {message}")]
+    InternalError { message: String },
 }
 
 #[derive(Debug, Error)]

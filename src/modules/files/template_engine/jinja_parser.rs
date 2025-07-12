@@ -233,8 +233,18 @@ impl Jinja2Parser {
 
         // Capture loop variable names for later conversion
         for caps in for_pattern.captures_iter(&result) {
-            let loop_var = caps.get(1).unwrap().as_str();
-            let array_var = caps.get(2).unwrap().as_str();
+            let loop_var = caps
+                .get(1)
+                .ok_or_else(|| ParseError::RegexError {
+                    error: "Failed to capture loop variable".to_string(),
+                })?
+                .as_str();
+            let array_var = caps
+                .get(2)
+                .ok_or_else(|| ParseError::RegexError {
+                    error: "Failed to capture array variable".to_string(),
+                })?
+                .as_str();
             variable_paths.push(format!("{array_var}[].{loop_var}"));
         }
 
@@ -355,8 +365,18 @@ impl Jinja2Parser {
         // Convert dot notation for root level variables
         // {{ object.property }} stays as {{ object.property }} in Handlebars
         for caps in self.variable_regex.captures_iter(&result) {
-            let object = caps.get(1).unwrap().as_str();
-            let property = caps.get(2).unwrap().as_str();
+            let object = caps
+                .get(1)
+                .ok_or_else(|| ParseError::RegexError {
+                    error: "Failed to capture object".to_string(),
+                })?
+                .as_str();
+            let property = caps
+                .get(2)
+                .ok_or_else(|| ParseError::RegexError {
+                    error: "Failed to capture property".to_string(),
+                })?
+                .as_str();
             variable_paths.push(format!("{object}.{property}"));
         }
 

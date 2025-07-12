@@ -154,7 +154,11 @@ impl ExecutionPlanParser {
             // Update dependencies
             for (dependent_id, dependencies) in &graph {
                 if dependencies.contains(&task_id) {
-                    let current_degree = in_degree.get_mut(dependent_id).unwrap();
+                    let current_degree = in_degree.get_mut(dependent_id).ok_or_else(|| {
+                        OrderingError::TopologicalSortFailed {
+                            reason: format!("Task '{}' not found in in-degree map", dependent_id),
+                        }
+                    })?;
                     *current_degree -= 1;
                     if *current_degree == 0 {
                         queue.push_back(dependent_id.clone());
@@ -273,21 +277,100 @@ impl SchemaValidator {
         }
     }
 
-    pub fn validate_plan(&self, _plan: &ExecutionPlan) -> Result<(), ValidationError> {
-        // TODO: Implement actual schema validation using jsonschema crate
+    pub fn validate_plan(&self, plan: &ExecutionPlan) -> Result<(), ValidationError> {
+        // Validate metadata version
+        if plan.metadata.version != "1.0" {
+            return Err(ValidationError::SchemaViolation {
+                field: "metadata.version".to_string(),
+                reason: format!("Unsupported version: {}", plan.metadata.version),
+            });
+        }
+
+        // Validate plan has tasks
+        if plan.tasks.is_empty() {
+            return Err(ValidationError::SchemaViolation {
+                field: "tasks".to_string(),
+                reason: "Plan must contain at least one task".to_string(),
+            });
+        }
+
+        // Validate each task
+        for task in &plan.tasks {
+            self.validate_task(task)?;
+        }
+
+        // Validate inventory
+        self.validate_inventory(&plan.inventory)?;
+
         Ok(())
     }
 
-    pub fn validate_task(&self, _task: &crate::execution::Task) -> Result<(), ValidationError> {
-        // TODO: Implement task-specific validation
+    pub fn validate_task(&self, task: &crate::execution::Task) -> Result<(), ValidationError> {
+        // Validate task ID
+        if task.id.trim().is_empty() {
+            return Err(ValidationError::SchemaViolation {
+                field: "task.id".to_string(),
+                reason: "Task ID cannot be empty".to_string(),
+            });
+        }
+
+        // Validate module name
+        if task.module.trim().is_empty() {
+            return Err(ValidationError::SchemaViolation {
+                field: "task.module".to_string(),
+                reason: "Task module cannot be empty".to_string(),
+            });
+        }
+
+        // Tasks can have empty args, so no validation needed for args presence
+
         Ok(())
     }
 
     pub fn validate_inventory(
         &self,
-        _inventory: &crate::execution::InventorySpec,
+        inventory: &crate::execution::InventorySpec,
     ) -> Result<(), ValidationError> {
-        // TODO: Implement inventory validation
+        // Validate inventory based on type
+        match &inventory.source {
+            crate::execution::InventorySource::Inline { content } => {
+                // Validate inline inventory content is not empty
+                if content.trim().is_empty() {
+                    return Err(ValidationError::SchemaViolation {
+                        field: "inventory.content".to_string(),
+                        reason: "Inline inventory content cannot be empty".to_string(),
+                    });
+                }
+            }
+            crate::execution::InventorySource::File { path } => {
+                // Validate file path is not empty
+                if path.trim().is_empty() {
+                    return Err(ValidationError::SchemaViolation {
+                        field: "inventory.file".to_string(),
+                        reason: "Inventory file path cannot be empty".to_string(),
+                    });
+                }
+            }
+            crate::execution::InventorySource::Dynamic { script } => {
+                // Validate dynamic script path
+                if script.trim().is_empty() {
+                    return Err(ValidationError::SchemaViolation {
+                        field: "inventory.dynamic".to_string(),
+                        reason: "Dynamic inventory script path cannot be empty".to_string(),
+                    });
+                }
+            }
+            crate::execution::InventorySource::Url { url } => {
+                // Validate URL is not empty
+                if url.trim().is_empty() {
+                    return Err(ValidationError::SchemaViolation {
+                        field: "inventory.url".to_string(),
+                        reason: "Inventory URL cannot be empty".to_string(),
+                    });
+                }
+            }
+        }
+
         Ok(())
     }
 }

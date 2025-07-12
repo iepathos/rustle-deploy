@@ -61,7 +61,10 @@ impl TemplateCache {
             return;
         }
 
-        let mut cache = self.cache.write().ok().unwrap();
+        let Ok(mut cache) = self.cache.write() else {
+            // Cache is poisoned, skip insertion
+            return;
+        };
 
         // Check if we need to evict entries
         if cache.len() >= self.max_size {
@@ -84,7 +87,10 @@ impl TemplateCache {
             return;
         }
 
-        let mut cache = self.cache.write().ok().unwrap();
+        let Ok(mut cache) = self.cache.write() else {
+            // Cache is poisoned, skip operation
+            return;
+        };
         let now = Instant::now();
 
         cache.retain(|_, entry| now.duration_since(entry.created_at) < self.ttl);
@@ -96,7 +102,10 @@ impl TemplateCache {
             return;
         }
 
-        let mut cache = self.cache.write().ok().unwrap();
+        let Ok(mut cache) = self.cache.write() else {
+            // Cache is poisoned, skip operation
+            return;
+        };
         cache.clear();
     }
 
@@ -106,7 +115,10 @@ impl TemplateCache {
             return CacheStats::default();
         }
 
-        let cache = self.cache.read().ok().unwrap();
+        let Ok(cache) = self.cache.read() else {
+            // Cache is poisoned, return empty stats
+            return CacheStats::default();
+        };
         let total_entries = cache.len();
         let total_access_count = cache.values().map(|e| e.access_count).sum();
 
@@ -152,7 +164,7 @@ impl Default for TemplateCache {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct CacheStats {
     pub total_entries: usize,
     pub expired_entries: usize,

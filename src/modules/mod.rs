@@ -1,5 +1,6 @@
 //! Core execution modules for Ansible-compatible binary deployments
 
+pub mod ast_parser;
 pub mod cache;
 pub mod compiler;
 pub mod core;

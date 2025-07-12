@@ -1,3 +1,4 @@
+use crate::modules::ast_parser::AstParser;
 use crate::modules::error::{CompileError, GenerationError};
 use crate::modules::loader::{CompiledModule, LoadedModule};
 use anyhow::Result;
@@ -8,6 +9,7 @@ use tracing::info;
 /// Code generator for module compilation
 pub struct CodeGenerator {
     template_engine: Handlebars<'static>,
+    ast_parser: AstParser,
 }
 
 impl Default for CodeGenerator {
@@ -27,7 +29,10 @@ impl CodeGenerator {
             .register_template_string("module_wrapper", wrapper_template)
             .expect("Failed to register module wrapper template");
 
-        Self { template_engine }
+        Self {
+            template_engine,
+            ast_parser: AstParser::new(),
+        }
     }
 
     pub async fn compile_module(
@@ -125,33 +130,28 @@ impl CodeGenerator {
         &self,
         module: &LoadedModule,
     ) -> Result<String, CompileError> {
-        // Extract the execute function from the module source
-        // This is a simplified version - in production, use syn crate for proper parsing
         let source = &module.source_code.main_file;
 
-        // Look for the execute function
-        if let Some(start) = source.find("fn execute") {
-            if let Some(end) = self.find_function_end(source, start) {
-                let implementation = &source[start..end];
-                return Ok(self.adapt_implementation(implementation, module));
+        // Use AST parser to extract the execute function
+        match self.ast_parser.extract_execute_function(source)? {
+            Some(implementation) => Ok(self.adapt_implementation(&implementation, module)),
+            None => {
+                // If no execute function found, generate a default one
+                Ok(self.generate_default_implementation(module))
             }
         }
-
-        // If no execute function found, generate a default one
-        Ok(self.generate_default_implementation(module))
     }
 
     fn prepare_module_source(&self, module: &LoadedModule) -> Result<String, CompileError> {
-        let mut source = module.source_code.main_file.clone();
+        let source = &module.source_code.main_file;
 
-        // Remove any module declarations or main functions
-        source = source.replace("fn main(", "fn _main(");
-        source = source.replace("mod tests", "mod _tests");
+        // Use AST parser to properly prepare the source
+        let mut prepared = self.ast_parser.prepare_module_source(source)?;
 
         // Add module implementation marker
-        source.push_str("\n\n// Module implementation injected by rustle-deploy\n");
+        prepared.push_str("\n\n// Module implementation injected by rustle-deploy\n");
 
-        Ok(source)
+        Ok(prepared)
     }
 
     fn generate_imports(&self, _module: &LoadedModule) -> Result<String, CompileError> {
@@ -207,46 +207,6 @@ impl CodeGenerator {
 
         name.push_str("Module");
         name
-    }
-
-    fn find_function_end(&self, source: &str, start: usize) -> Option<usize> {
-        let bytes = source.as_bytes();
-        let mut brace_count = 0;
-        let mut in_string = false;
-        let mut escape_next = false;
-        let mut i = start;
-
-        // Find the opening brace
-        while i < bytes.len() && bytes[i] != b'{' {
-            i += 1;
-        }
-
-        if i >= bytes.len() {
-            return None;
-        }
-
-        // Count braces to find the end
-        while i < bytes.len() {
-            if escape_next {
-                escape_next = false;
-            } else if bytes[i] == b'\\' && in_string {
-                escape_next = true;
-            } else if bytes[i] == b'"' && (i == 0 || bytes[i - 1] != b'\'') {
-                in_string = !in_string;
-            } else if !in_string {
-                if bytes[i] == b'{' {
-                    brace_count += 1;
-                } else if bytes[i] == b'}' {
-                    brace_count -= 1;
-                    if brace_count == 0 {
-                        return Some(i + 1);
-                    }
-                }
-            }
-            i += 1;
-        }
-
-        None
     }
 
     fn adapt_implementation(&self, implementation: &str, _module: &LoadedModule) -> String {

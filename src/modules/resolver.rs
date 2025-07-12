@@ -82,7 +82,11 @@ impl FileSystemResolver {
                 let path = entry.path();
                 if let Some(ext) = path.extension() {
                     if ext == "rs" || ext == "toml" {
-                        let relative = path.strip_prefix(dir).unwrap();
+                        let relative =
+                            path.strip_prefix(dir).map_err(|e| ResolveError::IoError {
+                                operation: "strip prefix".to_string(),
+                                error: e.to_string(),
+                            })?;
                         let content = tokio::fs::read_to_string(path).await.map_err(|e| {
                             ResolveError::IoError {
                                 operation: "read file".to_string(),
@@ -168,7 +172,9 @@ impl ModuleSourceResolver for FileSystemResolver {
                 })?;
 
                 // Look for additional files in the same directory
-                let directory = full_path.parent().unwrap();
+                let directory = full_path.parent().ok_or_else(|| ResolveError::NotFound {
+                    name: format!("Parent directory for {}", full_path.display()),
+                })?;
                 let additional_files = self.scan_directory(directory).await?;
                 let cargo_toml = self.load_cargo_toml(directory).await?;
 
@@ -226,12 +232,16 @@ impl GitResolver {
 
         if !cache_path.exists() {
             info!("Cloning repository {} to {:?}", repository, cache_path);
-            tokio::fs::create_dir_all(cache_path.parent().unwrap())
-                .await
-                .map_err(|e| ResolveError::IoError {
-                    operation: "create cache directory".to_string(),
-                    error: e.to_string(),
-                })?;
+            tokio::fs::create_dir_all(cache_path.parent().ok_or_else(|| {
+                ResolveError::NotFound {
+                    name: format!("Parent directory for {}", cache_path.display()),
+                }
+            })?)
+            .await
+            .map_err(|e| ResolveError::IoError {
+                operation: "create cache directory".to_string(),
+                error: e.to_string(),
+            })?;
 
             let output = Command::new("git")
                 .args(["clone", repository, &cache_path.display().to_string()])
@@ -307,7 +317,11 @@ impl GitResolver {
                 let path = entry.path();
                 if let Some(ext) = path.extension() {
                     if ext == "rs" && path != main_path {
-                        let relative = path.strip_prefix(dir).unwrap();
+                        let relative =
+                            path.strip_prefix(dir).map_err(|e| ResolveError::IoError {
+                                operation: "strip prefix".to_string(),
+                                error: e.to_string(),
+                            })?;
                         let content = tokio::fs::read_to_string(path).await.map_err(|e| {
                             ResolveError::IoError {
                                 operation: "read file".to_string(),
@@ -458,12 +472,16 @@ impl ModuleSourceResolver for HttpResolver {
             // Cache the downloaded content
             let cache_key = self.cache_key(source);
             let cache_path = self.cache_dir.join(&cache_key);
-            tokio::fs::create_dir_all(cache_path.parent().unwrap())
-                .await
-                .map_err(|e| ResolveError::IoError {
-                    operation: "create cache directory".to_string(),
-                    error: e.to_string(),
-                })?;
+            tokio::fs::create_dir_all(cache_path.parent().ok_or_else(|| {
+                ResolveError::NotFound {
+                    name: format!("Parent directory for {}", cache_path.display()),
+                }
+            })?)
+            .await
+            .map_err(|e| ResolveError::IoError {
+                operation: "create cache directory".to_string(),
+                error: e.to_string(),
+            })?;
 
             tokio::fs::write(&cache_path, &content)
                 .await

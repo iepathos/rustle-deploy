@@ -14,7 +14,13 @@ impl VariableResolver {
             let mut resolved_vars = inventory.global_vars.clone();
 
             // Collect variables from all groups (in order)
-            let host = inventory.hosts.get(&host_name).unwrap();
+            let host =
+                inventory
+                    .hosts
+                    .get(&host_name)
+                    .ok_or_else(|| VariableError::InvalidHost {
+                        host: host_name.clone(),
+                    })?;
             for group_name in &host.groups {
                 if let Some(group) = inventory.groups.get(group_name) {
                     // Recursively resolve parent group variables
@@ -33,7 +39,13 @@ impl VariableResolver {
             }
 
             // Update host with resolved variables
-            inventory.hosts.get_mut(&host_name).unwrap().variables = resolved_vars;
+            inventory
+                .hosts
+                .get_mut(&host_name)
+                .ok_or_else(|| VariableError::InvalidHost {
+                    host: host_name.clone(),
+                })?
+                .variables = resolved_vars;
         }
 
         Ok(())
@@ -76,7 +88,14 @@ impl VariableResolver {
         path: &mut Vec<String>,
     ) -> Result<(), VariableError> {
         if path.contains(&group_name.to_string()) {
-            let cycle_start = path.iter().position(|g| g == group_name).unwrap();
+            let cycle_start = path.iter().position(|g| g == group_name).ok_or_else(|| {
+                VariableError::InternalError {
+                    message: format!(
+                        "Group {} not found in path during circular dependency check",
+                        group_name
+                    ),
+                }
+            })?;
             let cycle = path[cycle_start..].to_vec();
             return Err(VariableError::CircularDependency { cycle });
         }

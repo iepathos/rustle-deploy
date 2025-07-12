@@ -228,7 +228,9 @@ impl LocalExecutor {
         self.state_manager.set_current_task(Some(task.id.clone()));
 
         // Report task start
-        self.progress_reporter.report_task_start(task).await?;
+        self.progress_reporter
+            .report_task_start(&self.execution_id, task)
+            .await?;
 
         // Evaluate conditions
         let condition_context = ConditionContext::new(
@@ -254,7 +256,9 @@ impl LocalExecutor {
                 error: None,
             };
 
-            self.progress_reporter.report_task_complete(&result).await?;
+            self.progress_reporter
+                .report_task_complete(&self.execution_id, &result)
+                .await?;
             return Ok(result);
         }
 
@@ -380,7 +384,7 @@ impl LocalExecutor {
 
         // Report task completion
         self.progress_reporter
-            .report_task_complete(&task_result)
+            .report_task_complete(&self.execution_id, &task_result)
             .await?;
 
         tracing::debug!(
