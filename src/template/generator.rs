@@ -363,6 +363,14 @@ impl BinaryTemplateGenerator {
                 include_str!("../templates/modules/parameter_mapping/handlers/command.rs"),
             ),
             (
+                "parameter_mapping/handlers/copy",
+                include_str!("../templates/modules/parameter_mapping/handlers/copy.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/file",
+                include_str!("../templates/modules/parameter_mapping/handlers/file.rs"),
+            ),
+            (
                 "parameter_mapping/handlers/package",
                 include_str!("../templates/modules/parameter_mapping/handlers/package.rs"),
             ),

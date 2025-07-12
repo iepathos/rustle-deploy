@@ -4,8 +4,8 @@ use tracing::debug;
 
 use super::{
     handlers::{
-        CommandParameterHandler, DebugParameterHandler, PackageParameterHandler,
-        ServiceParameterHandler,
+        CommandParameterHandler, CopyParameterHandler, DebugParameterHandler, FileParameterHandler,
+        PackageParameterHandler, ServiceParameterHandler,
     },
     ModuleParameterHandler, ParameterError,
 };
@@ -20,6 +20,8 @@ impl ParameterMapper {
 
         handlers.insert("command".to_string(), Box::new(CommandParameterHandler));
         handlers.insert("shell".to_string(), Box::new(CommandParameterHandler));
+        handlers.insert("copy".to_string(), Box::new(CopyParameterHandler));
+        handlers.insert("file".to_string(), Box::new(FileParameterHandler));
         handlers.insert("package".to_string(), Box::new(PackageParameterHandler));
         handlers.insert("service".to_string(), Box::new(ServiceParameterHandler));
         handlers.insert("debug".to_string(), Box::new(DebugParameterHandler));
