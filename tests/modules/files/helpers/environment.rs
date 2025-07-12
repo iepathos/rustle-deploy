@@ -8,7 +8,7 @@ use rustle_deploy::modules::interface::{
 };
 use serde_json::Value;
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tempfile::{tempdir, TempDir};
 
 /// Test environment that provides isolated testing capabilities

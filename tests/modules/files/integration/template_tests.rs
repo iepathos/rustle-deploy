@@ -4,8 +4,6 @@ use crate::modules::files::{
     assert_file_content, assert_file_exists, assert_is_file, TemplateTestBuilder, TestEnvironment,
     TestFixtures,
 };
-use serde_json::Value;
-use std::collections::HashMap;
 
 /// Test basic template rendering
 #[tokio::test]

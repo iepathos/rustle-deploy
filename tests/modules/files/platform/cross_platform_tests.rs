@@ -208,7 +208,7 @@ async fn test_cross_platform_case_sensitivity() {
         .state(FileState::Present)
         .build();
 
-    let result = env.execute_module("file", args).await.unwrap();
+    let _result = env.execute_module("file", args).await.unwrap();
 
     // Both files should exist independently on case-sensitive filesystems
     assert_file_exists(&file1);

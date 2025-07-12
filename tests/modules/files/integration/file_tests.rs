@@ -5,7 +5,6 @@ use crate::modules::files::{
     FileTestBuilder, TestEnvironment,
 };
 use rustle_deploy::modules::files::FileState;
-use std::path::Path;
 
 /// Test file creation with permissions
 #[tokio::test]

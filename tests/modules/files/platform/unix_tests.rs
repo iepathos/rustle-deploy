@@ -2,8 +2,7 @@
 
 #[cfg(unix)]
 use crate::modules::files::{
-    assert_file_exists, assert_file_permissions, assert_is_symlink, FileTestBuilder,
-    TestEnvironment,
+    assert_file_permissions, assert_is_symlink, FileTestBuilder, TestEnvironment,
 };
 #[cfg(unix)]
 use rustle_deploy::modules::files::FileState;

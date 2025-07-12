@@ -1,10 +1,6 @@
 //! Integration tests for the stat module
 
-use crate::modules::files::{
-    assert_file_exists, assert_is_directory, assert_is_file, StatTestBuilder, TestEnvironment,
-    TestFixtures,
-};
-use rustle_deploy::modules::files::StatResult;
+use crate::modules::files::{StatTestBuilder, TestEnvironment, TestFixtures};
 use serde_json::Value;
 
 /// Test basic file stat

@@ -4,7 +4,6 @@ use crate::modules::files::{
     assert_file_content, assert_file_exists, assert_files_equal, assert_is_file, CopyTestBuilder,
     TestEnvironment, TestFixtures,
 };
-use std::path::Path;
 
 /// Test basic file copy
 #[tokio::test]

@@ -1,11 +1,11 @@
 //! End-to-end workflow integration tests
 
 use crate::modules::files::{
-    assert_file_content, assert_file_exists, assert_is_directory, assert_is_file, CopyTestBuilder,
-    FileTestBuilder, StatTestBuilder, TemplateTestBuilder, TestEnvironment, TestFixtures,
+    assert_file_exists, assert_is_directory, CopyTestBuilder, FileTestBuilder, StatTestBuilder,
+    TemplateTestBuilder, TestEnvironment, TestFixtures,
 };
 use rustle_deploy::modules::files::FileState;
-use serde_json::{json, Value};
+use serde_json::Value;
 
 /// Test complete file workflow: create directory → copy template → process template → verify with stat
 #[tokio::test]
@@ -281,7 +281,7 @@ async fn test_file_synchronization_workflow() {
     let env = TestEnvironment::new();
 
     // Create source directory with files
-    let src_dir = env.create_test_directory("source");
+    let _src_dir = env.create_test_directory("source");
     env.create_test_file("source/file1.txt", "content1");
     env.create_test_file("source/file2.txt", "content2");
     env.create_test_directory("source/subdir");

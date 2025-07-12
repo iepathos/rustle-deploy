@@ -2,7 +2,7 @@
 
 use rustle_deploy::modules::files::FileState;
 use rustle_deploy::modules::interface::{ModuleArgs, SpecialParameters};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 
 /// Builder for file module test arguments
