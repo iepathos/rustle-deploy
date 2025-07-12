@@ -1,9 +1,9 @@
 use chrono::Utc;
 use rustle_deploy::compilation::output::BinaryOutputManager;
-use rustle_deploy::compilation::{
-    BinarySource, CompilationCache, CompiledBinary, OptimizationLevel,
+use rustle_deploy::compilation::CompilationCache;
+use rustle_deploy::types::compilation::{
+    BinarySourceInfo, BinarySourceType, BuildMetadata, CompiledBinary, OptimizationLevel,
 };
-use std::path::PathBuf;
 use tempfile::TempDir;
 
 fn create_test_cache() -> CompilationCache {
@@ -19,17 +19,22 @@ fn create_test_binary_with_cache() -> (CompiledBinary, TempDir) {
     std::fs::write(&cache_path, b"fake binary data").unwrap();
 
     let binary = CompiledBinary {
-        binary_id: "test-binary-id".to_string(),
+        compilation_id: "test-binary-id".to_string(),
         target_triple: "x86_64-unknown-linux-gnu".to_string(),
-        binary_path: cache_path.clone(),
         binary_data: b"fake binary data".to_vec(),
-        effective_source: BinarySource::Cache { cache_path },
-        size: 16,
         checksum: "test-checksum".to_string(),
+        size: 16,
         compilation_time: std::time::Duration::from_secs(1),
         optimization_level: OptimizationLevel::Release,
-        template_hash: "test-template-hash".to_string(),
-        created_at: Utc::now(),
+        source_info: BinarySourceInfo {
+            source_type: BinarySourceType::Cache { cache_path },
+            template_hash: "test-template-hash".to_string(),
+            build_metadata: BuildMetadata {
+                created_at: Utc::now(),
+                toolchain_version: "rustc 1.70.0".to_string(),
+                features: vec![],
+            },
+        },
     };
 
     (binary, temp_dir)
@@ -57,17 +62,22 @@ async fn test_memory_binary_copy() {
 
     // Create binary with in-memory source
     let binary = CompiledBinary {
-        binary_id: "test-binary-id".to_string(),
+        compilation_id: "test-binary-id".to_string(),
         target_triple: "x86_64-unknown-linux-gnu".to_string(),
-        binary_path: PathBuf::from("/nonexistent/path"),
         binary_data: b"fake binary data".to_vec(),
-        effective_source: BinarySource::InMemory,
-        size: 16,
         checksum: "test-checksum".to_string(),
+        size: 16,
         compilation_time: std::time::Duration::from_secs(1),
         optimization_level: OptimizationLevel::Release,
-        template_hash: "test-template-hash".to_string(),
-        created_at: Utc::now(),
+        source_info: BinarySourceInfo {
+            source_type: BinarySourceType::InMemory,
+            template_hash: "test-template-hash".to_string(),
+            build_metadata: BuildMetadata {
+                created_at: Utc::now(),
+                toolchain_version: "rustc 1.70.0".to_string(),
+                features: vec![],
+            },
+        },
     };
 
     let temp_output = TempDir::new().unwrap();

@@ -1,8 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
-use rustle_deploy::compilation::{
-    zigbuild::OptimizationLevel as CompilationOptimizationLevel, TargetDetector,
-};
+use rustle_deploy::compilation::TargetDetector;
+use rustle_deploy::types::compilation::OptimizationLevel;
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
 use rustle_deploy::types::Platform;
@@ -399,16 +398,16 @@ async fn run_compilation(
 
     // Parse optimization level
     let optimization_level = match cli.optimization.as_str() {
-        "debug" => CompilationOptimizationLevel::Debug,
-        "release" => CompilationOptimizationLevel::Release,
-        "aggressive" => CompilationOptimizationLevel::MinSizeRelease,
-        "auto" => CompilationOptimizationLevel::Release,
+        "debug" => OptimizationLevel::Debug,
+        "release" => OptimizationLevel::Release,
+        "aggressive" => OptimizationLevel::MinSize,
+        "auto" => OptimizationLevel::Release,
         _ => {
             warn!(
                 "Unknown optimization level '{}', using 'release'",
                 cli.optimization
             );
-            CompilationOptimizationLevel::Release
+            OptimizationLevel::Release
         }
     };
 
@@ -424,7 +423,7 @@ async fn run_compilation(
         target_detector.create_localhost_target_spec()?
     };
 
-    info!("Compiling for target: {}", target_spec.triple);
+    info!("Compiling for target: {}", target_spec.target_triple);
 
     // Create binary template generator
     let template_config = TemplateConfig::default();
@@ -460,7 +459,7 @@ async fn run_compilation(
     // let compiled_binary = compiler.compile_binary(&template, &target_spec).await?;
 
     info!("✅ Template generated successfully (compilation temporarily disabled):");
-    info!("   Target: {}", target_spec.triple);
+    info!("   Target: {}", target_spec.target_triple);
     info!("   Template files: {}", template.source_files.len());
 
     // TODO: Implement binary output management
@@ -499,43 +498,43 @@ async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput>
 fn create_target_info_from_spec(
     target_spec: &rustle_deploy::compilation::TargetSpecification,
 ) -> Result<TargetInfo> {
-    let platform = if target_spec.triple.contains("apple-darwin") {
+    let platform = if target_spec.target_triple.contains("apple-darwin") {
         Platform::MacOS
-    } else if target_spec.triple.contains("linux") {
+    } else if target_spec.target_triple.contains("linux") {
         Platform::Linux
-    } else if target_spec.triple.contains("windows") {
+    } else if target_spec.target_triple.contains("windows") {
         Platform::Windows
     } else {
         return Err(anyhow::anyhow!(
             "Unsupported target platform: {}",
-            target_spec.triple
+            target_spec.target_triple
         ));
     };
 
-    let architecture = if target_spec.triple.starts_with("aarch64") {
+    let architecture = if target_spec.target_triple.starts_with("aarch64") {
         "aarch64"
-    } else if target_spec.triple.starts_with("x86_64") {
+    } else if target_spec.target_triple.starts_with("x86_64") {
         "x86_64"
     } else {
         "unknown"
     };
 
-    let os_family = if target_spec.triple.contains("windows") {
+    let os_family = if target_spec.target_triple.contains("windows") {
         "windows"
     } else {
         "unix"
     };
 
-    let libc = if target_spec.triple.contains("musl") {
+    let libc = if target_spec.target_triple.contains("musl") {
         Some("musl".to_string())
-    } else if target_spec.triple.contains("gnu") {
+    } else if target_spec.target_triple.contains("gnu") {
         Some("gnu".to_string())
     } else {
         None
     };
 
     Ok(TargetInfo {
-        target_triple: target_spec.triple.clone(),
+        target_triple: target_spec.target_triple.clone(),
         platform,
         architecture: architecture.to_string(),
         os_family: os_family.to_string(),
