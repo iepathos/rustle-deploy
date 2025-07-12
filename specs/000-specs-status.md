@@ -30,6 +30,7 @@ This document tracks the status of all specification documents in the project.
 | 160 | Archive Git URL Operations Modules | ⬜ Planned |
 | 170 | User Group Management Modules | ⬜ Planned |
 | 190 | Type System Unification | ⬜ Planned |
+| 200 | Comprehensive File Operations Testing | ⬜ Planned |
 
 
 ## Notes
