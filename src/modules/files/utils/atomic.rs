@@ -37,7 +37,7 @@ impl AtomicWriter {
 
     /// Get a mutable reference to the temporary file for writing
     pub fn file_mut(&mut self) -> &mut File {
-        &mut *self.temp_file
+        &mut self.temp_file
     }
 
     /// Write data to the temporary file

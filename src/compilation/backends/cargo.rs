@@ -8,12 +8,13 @@ use crate::types::compilation::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 pub struct CargoBackend {
+    #[allow(dead_code)]
     cache_dir: PathBuf,
 }
 
@@ -31,6 +32,12 @@ impl Default for CargoConfig {
             verbose: false,
             target_dir: None,
         }
+    }
+}
+
+impl Default for CargoBackend {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -117,9 +124,7 @@ impl CargoBackend {
 
         // Find the built binary
         let target_dir = config
-            .target_dir
-            .as_ref()
-            .map(|p| p.clone())
+            .target_dir.clone()
             .unwrap_or_else(|| project_path.join("target"));
 
         let binary_path = target_dir
@@ -237,7 +242,7 @@ impl CompilationBackend for CargoBackend {
         Ok(compiled_binary)
     }
 
-    fn supports_target(&self, target: &str) -> bool {
+    fn supports_target(&self, _target: &str) -> bool {
         // Cargo supports most Rust targets
         // In practice, we'd check against `rustup target list` output
         true

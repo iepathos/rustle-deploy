@@ -4,7 +4,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
 /// Compilation capabilities detection
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,7 +195,7 @@ impl CompilationCapabilities {
 
         if self.zigbuild_available && ZIG_SUPPORTED_TARGETS.contains(&target) {
             CompilationStrategy::ZigBuild
-        } else if target == &self.native_target {
+        } else if target == self.native_target {
             CompilationStrategy::NativeCargo
         } else {
             CompilationStrategy::SshFallback
@@ -216,7 +216,7 @@ pub async fn detect_rust_installation() -> Result<RustInstallation> {
         .args(["--version"])
         .output()
         .await
-        .map_err(|e| DeployError::Configuration(format!("Failed to run rustc: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("Failed to run rustc: {e}")))?;
 
     if !output.status.success() {
         return Err(DeployError::Configuration(
@@ -236,7 +236,7 @@ pub async fn detect_rust_installation() -> Result<RustInstallation> {
         .args(["show", "active-toolchain"])
         .output()
         .await
-        .map_err(|e| DeployError::Configuration(format!("Failed to run rustup: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("Failed to run rustup: {e}")))?;
 
     let toolchain = if toolchain_output.status.success() {
         String::from_utf8_lossy(&toolchain_output.stdout)
@@ -251,7 +251,7 @@ pub async fn detect_rust_installation() -> Result<RustInstallation> {
         .args(["target", "list", "--installed"])
         .output()
         .await
-        .map_err(|e| DeployError::Configuration(format!("Failed to list targets: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("Failed to list targets: {e}")))?;
 
     let targets = if targets_output.status.success() {
         String::from_utf8_lossy(&targets_output.stdout)
@@ -264,9 +264,9 @@ pub async fn detect_rust_installation() -> Result<RustInstallation> {
 
     // Locate binaries
     let cargo_path = which::which("cargo")
-        .map_err(|e| DeployError::Configuration(format!("cargo not found: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("cargo not found: {e}")))?;
     let rustc_path = which::which("rustc")
-        .map_err(|e| DeployError::Configuration(format!("rustc not found: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("rustc not found: {e}")))?;
 
     Ok(RustInstallation {
         version,
@@ -290,7 +290,7 @@ pub async fn detect_zig_installation() -> Result<Option<ZigInstallation>> {
         Ok(output) if output.status.success() => {
             let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
             let zig_path = which::which("zig")
-                .map_err(|e| DeployError::Configuration(format!("zig not found in PATH: {}", e)))?;
+                .map_err(|e| DeployError::Configuration(format!("zig not found in PATH: {e}")))?;
 
             Ok(Some(ZigInstallation {
                 version,
@@ -323,7 +323,7 @@ async fn test_target_compilation(target: &str) -> Result<bool> {
         .args(["target", "list", "--installed"])
         .output()
         .await
-        .map_err(|e| DeployError::Configuration(format!("Failed to list targets: {}", e)))?;
+        .map_err(|e| DeployError::Configuration(format!("Failed to list targets: {e}")))?;
 
     if !output.status.success() {
         return Ok(false);

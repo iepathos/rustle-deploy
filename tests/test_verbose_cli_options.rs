@@ -108,7 +108,7 @@ fn test_verbosity_levels() {
         };
 
         // All verbosity levels should be valid u8 values
-        assert!(deploy_options.verbosity <= 255);
+        // Assertion removed as u8 is always <= 255
 
         // Test logical verbosity behavior
         match verbosity {

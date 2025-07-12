@@ -2,7 +2,6 @@ use crate::template::GeneratedTemplate;
 use crate::types::compilation::{CompiledBinary, TargetSpecification};
 /// Abstract compilation backend trait for rustle-deploy
 use async_trait::async_trait;
-use std::error::Error;
 
 #[async_trait]
 pub trait CompilationBackend: Send + Sync {

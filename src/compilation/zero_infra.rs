@@ -8,13 +8,13 @@ use crate::template::GeneratedTemplate;
 use crate::ParsedInventory;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Duration;
 use tracing::{debug, info, warn};
 use uuid;
 
 /// Zero-infrastructure cross-compilation manager
 pub struct ZeroInfraCompiler {
     capabilities: CompilationCapabilities,
+    #[allow(dead_code)]
     cache: CompilationCache,
     optimizer: DeploymentOptimizer,
     zigbuild_compiler: Option<ZigBuildCompiler>,
@@ -86,7 +86,7 @@ impl ZeroInfraCompiler {
         // Parse execution plan from embedded data
         let execution_plan: crate::execution::RustlePlanOutput =
             serde_json::from_str(&template.embedded_data.execution_plan).map_err(|e| {
-                DeployError::Configuration(format!("Failed to parse execution plan: {}", e))
+                DeployError::Configuration(format!("Failed to parse execution plan: {e}"))
             })?;
 
         // Analyze optimization potential
@@ -148,7 +148,7 @@ impl ZeroInfraCompiler {
     /// Compile binary using ZigBuild for specific target
     pub async fn compile_with_zigbuild(
         &self,
-        template: &GeneratedTemplate,
+        _template: &GeneratedTemplate,
         target: &TargetSpecification,
     ) -> Result<CompiledBinary> {
         let zigbuild_compiler =
@@ -219,7 +219,7 @@ impl ZeroInfraCompiler {
                 };
             }
             Err(e) => {
-                result.issues.push(format!("Rust validation failed: {}", e));
+                result.issues.push(format!("Rust validation failed: {e}"));
                 result
                     .recommendations
                     .push("Install Rust toolchain".to_string());
@@ -240,7 +240,7 @@ impl ZeroInfraCompiler {
                     .push("Install Zig for enhanced cross-compilation".to_string());
             }
             Err(e) => {
-                result.issues.push(format!("Zig validation failed: {}", e));
+                result.issues.push(format!("Zig validation failed: {e}"));
             }
         }
 
@@ -262,7 +262,7 @@ impl ZeroInfraCompiler {
             Err(e) => {
                 result
                     .issues
-                    .push(format!("cargo-zigbuild validation failed: {}", e));
+                    .push(format!("cargo-zigbuild validation failed: {e}"));
             }
         }
 
@@ -297,11 +297,11 @@ impl ZeroInfraCompiler {
 
         for host in &inventory.hosts {
             // Detect target architecture for this host
-            let target_triple = self.detect_target_for_host(&host.0).await?;
+            let target_triple = self.detect_target_for_host(host.0).await?;
 
             target_groups
                 .entry(target_triple)
-                .or_insert_with(Vec::new)
+                .or_default()
                 .push(host.0.clone());
         }
 

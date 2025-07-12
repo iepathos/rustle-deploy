@@ -195,7 +195,7 @@ fn test_verbose_flag_combinations() {
         // Verbosity should work with any other flag combination
         if flags.verbosity > 0 {
             // When verbosity is enabled, it should work with any other flags
-            assert!(true); // This test passes as verbose flag is independent
+            // Test passes as verbose flag is independent
         }
     }
 }
@@ -207,8 +207,7 @@ async fn test_async_verbose_operations() {
     async fn mock_verbose_operation(verbosity: u8) -> Result<String, &'static str> {
         if verbosity > 0 {
             Ok(format!(
-                "Operation completed with verbosity level {}",
-                verbosity
+                "Operation completed with verbosity level {verbosity}"
             ))
         } else {
             Ok("Operation completed silently".to_string())

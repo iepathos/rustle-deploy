@@ -16,7 +16,6 @@ use super::utils::{
     checksum::{calculate_file_checksum, ChecksumAlgorithm},
     ownership::get_ownership,
     permissions::get_permissions,
-    FileError,
 };
 
 /// Stat module arguments
@@ -121,7 +120,7 @@ impl ExecutionModule for StatModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let stat_args =
-            StatArgs::from_module_args(args).map_err(|e| ModuleExecutionError::Validation(e))?;
+            StatArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.execute_stat_operation(&stat_args, context).await
     }
@@ -247,7 +246,7 @@ impl StatModule {
                 "stat".to_string(),
                 serde_json::to_value(stat_result).map_err(|e| {
                     ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to serialize stat result: {}", e),
+                        message: format!("Failed to serialize stat result: {e}"),
                     }
                 })?,
             );
@@ -273,7 +272,7 @@ impl StatModule {
             fs::symlink_metadata(path).await
         }
         .map_err(|e| ModuleExecutionError::ExecutionFailed {
-            message: format!("Failed to get file metadata: {}", e),
+            message: format!("Failed to get file metadata: {e}"),
         })?;
 
         // Get file type information
@@ -344,7 +343,7 @@ impl StatModule {
             calculate_file_checksum(path, algorithm)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to calculate checksum: {}", e),
+                    message: format!("Failed to calculate checksum: {e}"),
                 })?
                 .into()
         } else {
@@ -373,7 +372,7 @@ impl StatModule {
         // Convert to JSON and add to results
         let stat_json = serde_json::to_value(stat_result).map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to serialize stat result: {}", e),
+                message: format!("Failed to serialize stat result: {e}"),
             }
         })?;
 

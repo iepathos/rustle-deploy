@@ -19,7 +19,6 @@ use super::utils::{
     checksum::{verify_file_checksum, ChecksumAlgorithm},
     ownership::set_ownership,
     permissions::set_permissions,
-    FileError,
 };
 
 /// Copy module arguments
@@ -151,7 +150,7 @@ impl ExecutionModule for CopyModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let copy_args =
-            CopyArgs::from_module_args(args).map_err(|e| ModuleExecutionError::Validation(e))?;
+            CopyArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.execute_copy_operation(&copy_args, context).await
     }
@@ -167,7 +166,7 @@ impl ExecutionModule for CopyModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let copy_args =
-            CopyArgs::from_module_args(args).map_err(|e| ModuleExecutionError::Validation(e))?;
+            CopyArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.analyze_copy_operation(&copy_args, context).await
     }
@@ -262,10 +261,11 @@ impl CopyModule {
     async fn execute_copy_operation(
         &self,
         args: &CopyArgs,
-        context: &ExecutionContext,
+        _context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let src_path = Path::new(&args.src);
         let dest_path = Path::new(&args.dest);
+        #[allow(unused_assignments)]
         let mut changed = false;
         let mut results = HashMap::new();
 
@@ -282,7 +282,7 @@ impl CopyModule {
                 verify_file_checksum(src_path, expected_checksum, ChecksumAlgorithm::Sha256)
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("Checksum verification failed: {}", e),
+                        message: format!("Checksum verification failed: {e}"),
                     })?;
 
             if !is_valid {
@@ -342,7 +342,7 @@ impl CopyModule {
             if !parent_dir.exists() {
                 fs::create_dir_all(parent_dir).await.map_err(|e| {
                     ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to create destination directory: {}", e),
+                        message: format!("Failed to create destination directory: {e}"),
                     }
                 })?;
 
@@ -350,7 +350,7 @@ impl CopyModule {
                 if let Some(dir_mode) = &args.directory_mode {
                     set_permissions(parent_dir, dir_mode).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to set directory permissions: {}", e),
+                            message: format!("Failed to set directory permissions: {e}"),
                         }
                     })?;
                 }
@@ -360,7 +360,7 @@ impl CopyModule {
         // Perform atomic copy
         let mut writer = AtomicWriter::new(dest_path).await.map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to create atomic writer: {}", e),
+                message: format!("Failed to create atomic writer: {e}"),
             }
         })?;
 
@@ -368,21 +368,21 @@ impl CopyModule {
             fs::read(src_path)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read source file: {}", e),
+                    message: format!("Failed to read source file: {e}"),
                 })?;
 
         writer
             .write_all(&content)
             .await
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to write destination file: {}", e),
+                message: format!("Failed to write destination file: {e}"),
             })?;
 
         writer
             .commit()
             .await
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to commit file copy: {}", e),
+                message: format!("Failed to commit file copy: {e}"),
             })?;
 
         changed = true;
@@ -391,7 +391,7 @@ impl CopyModule {
         if let Some(mode) = &args.mode {
             set_permissions(dest_path, mode).await.map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file permissions: {}", e),
+                    message: format!("Failed to set file permissions: {e}"),
                 }
             })?;
         }
@@ -401,7 +401,7 @@ impl CopyModule {
             set_ownership(dest_path, args.owner.as_deref(), args.group.as_deref())
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file ownership: {}", e),
+                    message: format!("Failed to set file ownership: {e}"),
                 })?;
         }
 
@@ -414,7 +414,7 @@ impl CopyModule {
                 .output()
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to run validation command: {}", e),
+                    message: format!("Failed to run validation command: {e}"),
                 })?;
 
             if !output.status.success() {
@@ -527,14 +527,14 @@ impl CopyModule {
             fs::metadata(src)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to get source metadata: {}", e),
+                    message: format!("Failed to get source metadata: {e}"),
                 })?;
 
         let dest_metadata =
             fs::metadata(dest)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to get destination metadata: {}", e),
+                    message: format!("Failed to get destination metadata: {e}"),
                 })?;
 
         if src_metadata.len() != dest_metadata.len() {
@@ -546,14 +546,14 @@ impl CopyModule {
             fs::read(src)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read source file: {}", e),
+                    message: format!("Failed to read source file: {e}"),
                 })?;
 
         let dest_content =
             fs::read(dest)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read destination file: {}", e),
+                    message: format!("Failed to read destination file: {e}"),
                 })?;
 
         Ok(src_content != dest_content)

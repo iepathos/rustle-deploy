@@ -12,9 +12,11 @@ use super::FileError;
 
 /// Supported checksum algorithms
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum ChecksumAlgorithm {
     Md5,
     Sha1,
+    #[default]
     Sha256,
 }
 
@@ -26,16 +28,11 @@ impl std::str::FromStr for ChecksumAlgorithm {
             "md5" => Ok(ChecksumAlgorithm::Md5),
             "sha1" => Ok(ChecksumAlgorithm::Sha1),
             "sha256" => Ok(ChecksumAlgorithm::Sha256),
-            _ => Err(format!("Unsupported checksum algorithm: {}", s)),
+            _ => Err(format!("Unsupported checksum algorithm: {s}")),
         }
     }
 }
 
-impl Default for ChecksumAlgorithm {
-    fn default() -> Self {
-        ChecksumAlgorithm::Sha256
-    }
-}
 
 /// Calculate file checksum using specified algorithm
 pub async fn calculate_file_checksum(
@@ -100,7 +97,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_checksum_calculation() {
-        let mut temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().unwrap();
         let mut file = File::from_std(temp_file.reopen().unwrap());
         file.write_all(b"hello world").await.unwrap();
         file.flush().await.unwrap();

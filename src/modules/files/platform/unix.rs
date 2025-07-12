@@ -18,7 +18,7 @@ pub async fn create_hardlink(src: &Path, dest: &Path) -> Result<(), FileError> {
 
 /// Get extended file attributes (Unix)
 pub async fn get_extended_attributes(
-    path: &Path,
+    _path: &Path,
 ) -> Result<std::collections::HashMap<String, Vec<u8>>, FileError> {
     // This would implement extended attributes support
     // For now, return empty map
@@ -27,9 +27,9 @@ pub async fn get_extended_attributes(
 
 /// Set extended file attributes (Unix)
 pub async fn set_extended_attribute(
-    path: &Path,
-    name: &str,
-    value: &[u8],
+    _path: &Path,
+    _name: &str,
+    _value: &[u8],
 ) -> Result<(), FileError> {
     // This would implement extended attributes support
     // For now, this is a no-op

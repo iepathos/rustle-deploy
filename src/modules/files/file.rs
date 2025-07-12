@@ -14,10 +14,9 @@ use crate::modules::interface::{
 
 use super::platform;
 use super::utils::{
-    backup::{create_backup, create_simple_backup},
+    backup::create_simple_backup,
     ownership::{get_ownership, set_ownership},
     permissions::{get_permissions, set_permissions},
-    FileError,
 };
 
 /// File state options
@@ -43,7 +42,7 @@ impl std::str::FromStr for FileState {
             "link" => Ok(FileState::Link),
             "hard" => Ok(FileState::Hard),
             "touch" => Ok(FileState::Touch),
-            _ => Err(format!("Invalid file state: {}", s)),
+            _ => Err(format!("Invalid file state: {s}")),
         }
     }
 }
@@ -176,7 +175,7 @@ impl ExecutionModule for FileModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let file_args =
-            FileArgs::from_module_args(args).map_err(|e| ModuleExecutionError::Validation(e))?;
+            FileArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.execute_file_operation(&file_args, context).await
     }
@@ -192,7 +191,7 @@ impl ExecutionModule for FileModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let file_args =
-            FileArgs::from_module_args(args).map_err(|e| ModuleExecutionError::Validation(e))?;
+            FileArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         // In check mode, we analyze what would be done without making changes
         self.analyze_file_operation(&file_args, context).await
@@ -288,7 +287,7 @@ impl FileModule {
     async fn execute_file_operation(
         &self,
         args: &FileArgs,
-        context: &ExecutionContext,
+        _context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let path = Path::new(&args.path);
         let mut changed = false;
@@ -310,7 +309,7 @@ impl FileModule {
                 if !path.exists() {
                     fs::File::create(path).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create file: {}", e),
+                            message: format!("Failed to create file: {e}"),
                         }
                     })?;
                     changed = true;
@@ -328,7 +327,7 @@ impl FileModule {
                         fs::remove_file(path).await
                     }
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to remove: {}", e),
+                        message: format!("Failed to remove: {e}"),
                     })?;
                     changed = true;
                 }
@@ -337,7 +336,7 @@ impl FileModule {
                 if !path.exists() {
                     fs::create_dir_all(path).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create directory: {}", e),
+                            message: format!("Failed to create directory: {e}"),
                         }
                     })?;
                     changed = true;
@@ -363,7 +362,7 @@ impl FileModule {
                     platform::create_symlink(Path::new(src), path)
                         .await
                         .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create symlink: {}", e),
+                            message: format!("Failed to create symlink: {e}"),
                         })?;
                     changed = true;
                 }
@@ -384,7 +383,7 @@ impl FileModule {
                     platform::create_hardlink(Path::new(src), path)
                         .await
                         .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create hardlink: {}", e),
+                            message: format!("Failed to create hardlink: {e}"),
                         })?;
                     changed = true;
                 }
@@ -393,7 +392,7 @@ impl FileModule {
                 if !path.exists() {
                     fs::File::create(path).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create file: {}", e),
+                            message: format!("Failed to create file: {e}"),
                         }
                     })?;
                     changed = true;
@@ -403,7 +402,7 @@ impl FileModule {
                     let file_time = filetime::FileTime::from_system_time(now);
                     filetime::set_file_times(path, file_time, file_time).map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to set file times: {}", e),
+                            message: format!("Failed to set file times: {e}"),
                         }
                     })?;
                     changed = true;
@@ -416,7 +415,7 @@ impl FileModule {
             if path.exists() {
                 set_permissions(path, mode).await.map_err(|e| {
                     ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to set permissions: {}", e),
+                        message: format!("Failed to set permissions: {e}"),
                     }
                 })?;
                 changed = true;
@@ -424,16 +423,15 @@ impl FileModule {
         }
 
         // Set ownership if specified
-        if args.owner.is_some() || args.group.is_some() {
-            if path.exists() {
+        if (args.owner.is_some() || args.group.is_some())
+            && path.exists() {
                 set_ownership(path, args.owner.as_deref(), args.group.as_deref())
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to set ownership: {}", e),
+                        message: format!("Failed to set ownership: {e}"),
                     })?;
                 changed = true;
             }
-        }
 
         // Add file information to results
         if path.exists() {

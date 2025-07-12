@@ -543,6 +543,7 @@ fn create_target_info_from_spec(
     })
 }
 
+#[allow(dead_code)]
 async fn test_binary_execution(binary_path: &PathBuf) -> Result<()> {
     info!("Executing binary for testing: {}", binary_path.display());
 

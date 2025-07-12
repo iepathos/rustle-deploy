@@ -15,7 +15,7 @@ use crate::modules::interface::{
 
 use super::utils::{
     atomic::AtomicWriter, backup::create_backup, ownership::set_ownership,
-    permissions::set_permissions, FileError,
+    permissions::set_permissions,
 };
 
 /// Template module arguments
@@ -110,6 +110,12 @@ pub struct TemplateProcessor {
     handlebars: Handlebars<'static>,
 }
 
+impl Default for TemplateProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TemplateProcessor {
     pub fn new() -> Self {
         let mut handlebars = Handlebars::new();
@@ -157,7 +163,7 @@ impl ExecutionModule for TemplateModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let template_args = TemplateArgs::from_module_args(args)
-            .map_err(|e| ModuleExecutionError::Validation(e))?;
+            .map_err(ModuleExecutionError::Validation)?;
 
         self.execute_template_operation(&template_args, context)
             .await
@@ -174,7 +180,7 @@ impl ExecutionModule for TemplateModule {
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let template_args = TemplateArgs::from_module_args(args)
-            .map_err(|e| ModuleExecutionError::Validation(e))?;
+            .map_err(ModuleExecutionError::Validation)?;
 
         self.analyze_template_operation(&template_args, context)
             .await
@@ -283,7 +289,7 @@ impl TemplateModule {
         // Read template content
         let template_content = fs::read_to_string(src_path).await.map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to read template file: {}", e),
+                message: format!("Failed to read template file: {e}"),
             }
         })?;
 
@@ -297,7 +303,7 @@ impl TemplateModule {
 
         // Add context facts
         for (key, value) in &context.facts {
-            template_vars.insert(format!("ansible_{}", key), value.clone());
+            template_vars.insert(format!("ansible_{key}"), value.clone());
         }
 
         // Add host information
@@ -315,11 +321,9 @@ impl TemplateModule {
         );
 
         // Add user-provided variables (these override context variables)
-        if let Some(user_vars) = &args.variables {
-            if let serde_json::Value::Object(user_map) = user_vars {
-                for (key, value) in user_map {
-                    template_vars.insert(key.clone(), value.clone());
-                }
+        if let Some(serde_json::Value::Object(user_map)) = &args.variables {
+            for (key, value) in user_map {
+                template_vars.insert(key.clone(), value.clone());
             }
         }
 
@@ -330,14 +334,14 @@ impl TemplateModule {
         let rendered_content = processor
             .render_template(&template_content, &variables)
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Template rendering failed: {}", e),
+                message: format!("Template rendering failed: {e}"),
             })?;
 
         // Check if destination content would be different
         let content_changed = if dest_path.exists() {
             let existing_content = fs::read_to_string(dest_path).await.map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read existing destination file: {}", e),
+                    message: format!("Failed to read existing destination file: {e}"),
                 }
             })?;
             existing_content != rendered_content
@@ -361,7 +365,7 @@ impl TemplateModule {
                 if !parent_dir.exists() {
                     fs::create_dir_all(parent_dir).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to create destination directory: {}", e),
+                            message: format!("Failed to create destination directory: {e}"),
                         }
                     })?;
                 }
@@ -370,7 +374,7 @@ impl TemplateModule {
             // Write rendered content atomically
             let mut writer = AtomicWriter::new(dest_path).await.map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to create atomic writer: {}", e),
+                    message: format!("Failed to create atomic writer: {e}"),
                 }
             })?;
 
@@ -378,14 +382,14 @@ impl TemplateModule {
                 .write_all(rendered_content.as_bytes())
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to write template output: {}", e),
+                    message: format!("Failed to write template output: {e}"),
                 })?;
 
             writer
                 .commit()
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to commit template file: {}", e),
+                    message: format!("Failed to commit template file: {e}"),
                 })?;
 
             changed = true;
@@ -395,7 +399,7 @@ impl TemplateModule {
         if let Some(mode) = &args.mode {
             set_permissions(dest_path, mode).await.map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file permissions: {}", e),
+                    message: format!("Failed to set file permissions: {e}"),
                 }
             })?;
         }
@@ -405,7 +409,7 @@ impl TemplateModule {
             set_ownership(dest_path, args.owner.as_deref(), args.group.as_deref())
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file ownership: {}", e),
+                    message: format!("Failed to set file ownership: {e}"),
                 })?;
         }
 
@@ -418,7 +422,7 @@ impl TemplateModule {
                 .output()
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to run validation command: {}", e),
+                    message: format!("Failed to run validation command: {e}"),
                 })?;
 
             if !output.status.success() {
@@ -462,7 +466,7 @@ impl TemplateModule {
     async fn analyze_template_operation(
         &self,
         args: &TemplateArgs,
-        context: &ExecutionContext,
+        _context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
         let src_path = Path::new(&args.src);
         let dest_path = Path::new(&args.dest);

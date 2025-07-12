@@ -79,7 +79,7 @@ fn resolve_user(user: &str) -> Result<nix::unistd::Uid, FileError> {
         Ok(Uid::from_raw(uid))
     } else {
         Err(FileError::NotFound {
-            path: format!("User: {}", user),
+            path: format!("User: {user}"),
         })
     }
 }
@@ -98,7 +98,7 @@ fn resolve_group(group: &str) -> Result<nix::unistd::Gid, FileError> {
         Ok(Gid::from_raw(gid))
     } else {
         Err(FileError::NotFound {
-            path: format!("Group: {}", group),
+            path: format!("Group: {group}"),
         })
     }
 }
@@ -106,13 +106,12 @@ fn resolve_group(group: &str) -> Result<nix::unistd::Gid, FileError> {
 #[cfg(unix)]
 fn get_uid_by_username(username: &str) -> Option<u32> {
     use std::ffi::CString;
-    use std::ptr;
 
     let c_username = CString::new(username).ok()?;
 
     unsafe {
         let passwd = libc::getpwnam(c_username.as_ptr());
-        if passwd != ptr::null_mut() {
+        if !passwd.is_null() {
             Some((*passwd).pw_uid)
         } else {
             None
@@ -123,13 +122,12 @@ fn get_uid_by_username(username: &str) -> Option<u32> {
 #[cfg(unix)]
 fn get_gid_by_groupname(groupname: &str) -> Option<u32> {
     use std::ffi::CString;
-    use std::ptr;
 
     let c_groupname = CString::new(groupname).ok()?;
 
     unsafe {
         let group = libc::getgrnam(c_groupname.as_ptr());
-        if group != ptr::null_mut() {
+        if !group.is_null() {
             Some((*group).gr_gid)
         } else {
             None
@@ -140,11 +138,10 @@ fn get_gid_by_groupname(groupname: &str) -> Option<u32> {
 #[cfg(unix)]
 fn get_username_by_uid(uid: u32) -> Option<String> {
     use std::ffi::CStr;
-    use std::ptr;
 
     unsafe {
         let passwd = libc::getpwuid(uid);
-        if passwd != ptr::null_mut() {
+        if !passwd.is_null() {
             let c_str = CStr::from_ptr((*passwd).pw_name);
             c_str.to_str().ok().map(|s| s.to_string())
         } else {
@@ -156,11 +153,10 @@ fn get_username_by_uid(uid: u32) -> Option<String> {
 #[cfg(unix)]
 fn get_groupname_by_gid(gid: u32) -> Option<String> {
     use std::ffi::CStr;
-    use std::ptr;
 
     unsafe {
         let group = libc::getgrgid(gid);
-        if group != ptr::null_mut() {
+        if !group.is_null() {
             let c_str = CStr::from_ptr((*group).gr_name);
             c_str.to_str().ok().map(|s| s.to_string())
         } else {

@@ -64,7 +64,7 @@ fn parse_symbolic_mode(mode: &str) -> Result<u32, FileError> {
             continue;
         }
 
-        let (who, op_and_perms) = if let Some(pos) = part.find(|c| c == '+' || c == '-' || c == '=')
+        let (who, op_and_perms) = if let Some(pos) = part.find(['+', '-', '='])
         {
             (&part[..pos], &part[pos..])
         } else {
@@ -151,7 +151,7 @@ pub async fn get_permissions(path: &Path) -> Result<String, FileError> {
     {
         use std::os::unix::fs::PermissionsExt;
         let mode = metadata.permissions().mode() & 0o777;
-        Ok(format!("{:o}", mode))
+        Ok(format!("{mode:o}"))
     }
 
     #[cfg(windows)]

@@ -73,10 +73,10 @@ pub enum OptimizationError {
 impl std::fmt::Display for AnalysisError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AnalysisError::InsufficientData(msg) => write!(f, "Insufficient data: {}", msg),
-            AnalysisError::InvalidConfiguration(msg) => write!(f, "Invalid configuration: {}", msg),
+            AnalysisError::InsufficientData(msg) => write!(f, "Insufficient data: {msg}"),
+            AnalysisError::InvalidConfiguration(msg) => write!(f, "Invalid configuration: {msg}"),
             AnalysisError::PerformancePredictionFailed(msg) => {
-                write!(f, "Performance prediction failed: {}", msg)
+                write!(f, "Performance prediction failed: {msg}")
             }
         }
     }
@@ -85,12 +85,12 @@ impl std::fmt::Display for AnalysisError {
 impl std::fmt::Display for OptimizationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            OptimizationError::AnalysisFailed(msg) => write!(f, "Analysis failed: {}", msg),
+            OptimizationError::AnalysisFailed(msg) => write!(f, "Analysis failed: {msg}"),
             OptimizationError::CompilationStrategyFailed(msg) => {
-                write!(f, "Compilation strategy failed: {}", msg)
+                write!(f, "Compilation strategy failed: {msg}")
             }
             OptimizationError::TargetGroupingFailed(msg) => {
-                write!(f, "Target grouping failed: {}", msg)
+                write!(f, "Target grouping failed: {msg}")
             }
         }
     }
@@ -412,6 +412,12 @@ impl DeploymentOptimizer {
     ) -> Result<()> {
         // TODO: Implement SSH deployment creation
         Ok(())
+    }
+}
+
+impl Default for DeploymentPlan {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

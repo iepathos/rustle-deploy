@@ -1,4 +1,4 @@
-use crate::compilation::toolchain::{Architecture, Platform};
+use crate::compilation::toolchain::Platform;
 use crate::compilation::{OptimizationLevel, TargetSpecification};
 use anyhow::Result;
 use std::collections::HashMap;
@@ -153,7 +153,7 @@ impl TargetDetector {
         target_triple: &str,
         optimization_level: OptimizationLevel,
     ) -> Result<TargetSpecification, TargetDetectionError> {
-        let target_info = self.supported_targets.get(target_triple).ok_or_else(|| {
+        let _target_info = self.supported_targets.get(target_triple).ok_or_else(|| {
             TargetDetectionError::UnsupportedPlatform {
                 platform: target_triple.to_string(),
             }
@@ -216,6 +216,7 @@ impl TargetDetector {
         self.create_target_spec(target_triple, optimization_level)
     }
 
+    #[allow(dead_code)]
     fn get_default_target_cpu(&self, target_triple: &str) -> Option<String> {
         match target_triple {
             "aarch64-apple-darwin" => Some("apple-m1".to_string()),

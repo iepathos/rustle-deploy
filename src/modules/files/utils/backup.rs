@@ -1,6 +1,6 @@
 //! File backup utilities
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::path::{Path, PathBuf};
 
 use super::FileError;

@@ -8,30 +8,29 @@ use crate::types::compilation::{
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
 
 #[derive(Debug, Clone)]
 pub struct ZigBuildBackend {
+    #[allow(dead_code)]
     cache_dir: PathBuf,
     zig_available: bool,
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ZigBuildConfig {
     pub zig_path: Option<PathBuf>,
     pub verbose: bool,
     pub target_dir: Option<PathBuf>,
 }
 
-impl Default for ZigBuildConfig {
+
+impl Default for ZigBuildBackend {
     fn default() -> Self {
-        Self {
-            zig_path: None,
-            verbose: false,
-            target_dir: None,
-        }
+        Self::new()
     }
 }
 
@@ -150,9 +149,7 @@ impl ZigBuildBackend {
 
         // Find the built binary
         let target_dir = config
-            .target_dir
-            .as_ref()
-            .map(|p| p.clone())
+            .target_dir.clone()
             .unwrap_or_else(|| project_path.join("target"));
 
         let binary_path = target_dir

@@ -1,7 +1,5 @@
-use crate::compilation::capabilities::{CompilationCapabilities, ImpactLevel, SetupRecommendation};
+use crate::compilation::capabilities::{CompilationCapabilities, SetupRecommendation};
 use crate::deploy::{DeployError, Result};
-use std::collections::HashMap;
-use std::path::PathBuf;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
 
@@ -43,10 +41,10 @@ pub enum InstallationError {
 impl std::fmt::Display for DetectionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DetectionError::ToolchainMissing(tool) => write!(f, "Toolchain missing: {}", tool),
-            DetectionError::VersionIncompatible(msg) => write!(f, "Version incompatible: {}", msg),
-            DetectionError::InstallationFailed(msg) => write!(f, "Installation failed: {}", msg),
-            DetectionError::PermissionDenied(msg) => write!(f, "Permission denied: {}", msg),
+            DetectionError::ToolchainMissing(tool) => write!(f, "Toolchain missing: {tool}"),
+            DetectionError::VersionIncompatible(msg) => write!(f, "Version incompatible: {msg}"),
+            DetectionError::InstallationFailed(msg) => write!(f, "Installation failed: {msg}"),
+            DetectionError::PermissionDenied(msg) => write!(f, "Permission denied: {msg}"),
         }
     }
 }
@@ -131,14 +129,13 @@ impl ToolchainDetector {
             .output()
             .await
             .map_err(|e| {
-                DeployError::Configuration(format!("Failed to run cargo install: {}", e))
+                DeployError::Configuration(format!("Failed to run cargo install: {e}"))
             })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(DeployError::Configuration(format!(
-                "Failed to install cargo-zigbuild: {}",
-                stderr
+                "Failed to install cargo-zigbuild: {stderr}"
             )));
         }
 
@@ -197,7 +194,7 @@ impl ToolchainDetector {
                 debug!("Rust toolchain validated successfully");
             }
             Err(e) => {
-                status.issues.push(format!("Rust toolchain issue: {}", e));
+                status.issues.push(format!("Rust toolchain issue: {e}"));
                 warn!("Rust toolchain validation failed: {}", e);
             }
         }
@@ -212,7 +209,7 @@ impl ToolchainDetector {
                 debug!("Zig not installed");
             }
             Err(e) => {
-                status.issues.push(format!("Zig detection issue: {}", e));
+                status.issues.push(format!("Zig detection issue: {e}"));
                 warn!("Zig detection failed: {}", e);
             }
         }
@@ -229,7 +226,7 @@ impl ToolchainDetector {
             Err(e) => {
                 status
                     .issues
-                    .push(format!("cargo-zigbuild detection issue: {}", e));
+                    .push(format!("cargo-zigbuild detection issue: {e}"));
                 warn!("cargo-zigbuild detection failed: {}", e);
             }
         }

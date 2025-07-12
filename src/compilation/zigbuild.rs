@@ -61,7 +61,7 @@ impl ZigBuildCompiler {
     /// Create new ZigBuild compiler instance
     pub async fn new(cache_dir: PathBuf) -> Result<Self> {
         let cargo_path = which::which("cargo")
-            .map_err(|e| DeployError::Configuration(format!("cargo not found: {}", e)))?;
+            .map_err(|e| DeployError::Configuration(format!("cargo not found: {e}")))?;
 
         let zig_path = which::which("zig").ok();
 
@@ -69,7 +69,7 @@ impl ZigBuildCompiler {
         tokio::fs::create_dir_all(&build_cache_dir)
             .await
             .map_err(|e| {
-                DeployError::Configuration(format!("Failed to create build cache directory: {}", e))
+                DeployError::Configuration(format!("Failed to create build cache directory: {e}"))
             })?;
 
         Ok(Self {
@@ -142,7 +142,7 @@ impl ZigBuildCompiler {
 
         // Execute compilation
         let output = cmd.output().await.map_err(|e| {
-            DeployError::Configuration(format!("Failed to execute cargo zigbuild: {}", e))
+            DeployError::Configuration(format!("Failed to execute cargo zigbuild: {e}"))
         })?;
 
         if !output.status.success() {
@@ -167,7 +167,7 @@ impl ZigBuildCompiler {
 
         // Get binary information
         let metadata = tokio::fs::metadata(&binary_path).await.map_err(|e| {
-            DeployError::Configuration(format!("Failed to read binary metadata: {}", e))
+            DeployError::Configuration(format!("Failed to read binary metadata: {e}"))
         })?;
 
         let compilation_time = start_time.elapsed();
@@ -215,7 +215,7 @@ impl ZigBuildCompiler {
             .output()
             .await
             .map_err(|e| {
-                DeployError::Configuration(format!("Failed to query Zig targets: {}", e))
+                DeployError::Configuration(format!("Failed to query Zig targets: {e}"))
             })?;
 
         if !output.status.success() {
@@ -223,7 +223,7 @@ impl ZigBuildCompiler {
         }
 
         // Parse Zig targets output (simplified)
-        let targets_output = String::from_utf8_lossy(&output.stdout);
+        let _targets_output = String::from_utf8_lossy(&output.stdout);
         let mut supported_targets = Vec::new();
 
         // Extract common targets that are known to work well
@@ -309,7 +309,7 @@ impl ZigBuildCompiler {
         };
 
         for name in binary_names {
-            let binary_path = release_dir.join(format!("{}{}", name, binary_extension));
+            let binary_path = release_dir.join(format!("{name}{binary_extension}"));
             if binary_path.exists() {
                 return Ok(binary_path);
             }
@@ -317,7 +317,7 @@ impl ZigBuildCompiler {
 
         // If not found, try to find any executable in the release directory
         let mut entries = tokio::fs::read_dir(&release_dir).await.map_err(|e| {
-            DeployError::Configuration(format!("Failed to read release directory: {}", e))
+            DeployError::Configuration(format!("Failed to read release directory: {e}"))
         })?;
 
         while let Ok(Some(entry)) = entries.next_entry().await {

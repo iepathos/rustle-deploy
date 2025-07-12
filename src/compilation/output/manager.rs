@@ -43,7 +43,7 @@ impl BinaryOutputManager {
         let mut compatible_strategies: Vec<_> = self
             .output_strategies
             .iter()
-            .filter(|s| true) // Remove effective_source check for now
+            .filter(|_s| true) // Remove effective_source check for now
             .collect();
         compatible_strategies.sort_by_key(|s| std::cmp::Reverse(s.priority()));
 

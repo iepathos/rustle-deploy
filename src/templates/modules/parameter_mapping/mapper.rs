@@ -41,7 +41,7 @@ impl ParameterMapper {
 
         let handler = self.module_handlers.get(module_name).ok_or_else(|| {
             ParameterError::UnknownParameter {
-                param: format!("module: {}", module_name),
+                param: format!("module: {module_name}"),
             }
         })?;
 
