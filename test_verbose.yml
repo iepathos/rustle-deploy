@@ -10,5 +10,5 @@
         name: git
         state: present
     - name: Command task
-      command: /bin/true
+      command: /usr/bin/true
 

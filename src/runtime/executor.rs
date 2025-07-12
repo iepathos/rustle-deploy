@@ -267,7 +267,7 @@ impl LocalExecutor {
             environment: std::env::vars().collect(),
             check_mode: self.config.check_mode.unwrap_or(false),
             diff_mode: false,
-            verbosity: 0,
+            verbosity: if self.config.verbose { 1 } else { 0 },
         };
 
         // Prepare module arguments
@@ -327,6 +327,17 @@ impl LocalExecutor {
         };
 
         let end_utc = Utc::now();
+        
+        // Verbose logging for module results
+        if self.config.verbose {
+            tracing::info!(
+                "Module {} raw result: changed={}, failed={}, msg={:?}",
+                task.module,
+                module_result.changed,
+                module_result.failed,
+                module_result.msg
+            );
+        }
         let task_result = TaskResult {
             task_id: task.id.clone(),
             name: task.name.clone(),
@@ -354,6 +365,18 @@ impl LocalExecutor {
                 None
             },
         };
+
+        // Verbose logging for task results
+        if self.config.verbose {
+            tracing::info!(
+                "Task {} result: status={:?}, changed={}, failed={}, error={:?}",
+                task.id,
+                task_result.status,
+                task_result.changed,
+                task_result.failed,
+                task_result.error
+            );
+        }
 
         // Report task completion
         self.progress_reporter

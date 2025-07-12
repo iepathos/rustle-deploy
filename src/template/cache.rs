@@ -222,6 +222,7 @@ mod tests {
                     report_interval: Duration::from_secs(30),
                     cleanup_on_completion: true,
                     log_level: "info".to_string(),
+                    verbose: false,
                 },
                 secrets: EncryptedSecrets {
                     vault_data: HashMap::new(),

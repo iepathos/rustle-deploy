@@ -449,13 +449,19 @@ async fn run_compilation(
 
     // Generate binary template from execution plan
     info!("Generating binary template");
+    
+    // Create or modify binary deployment plan to include verbose setting
+    let mut binary_deployment = rustle_plan
+        .binary_deployments
+        .first()
+        .cloned()
+        .unwrap_or_default();
+    binary_deployment.verbose = Some(cli.verbose);
+    
     let template = template_generator
         .generate_binary_template(
             &rustle_plan,
-            rustle_plan
-                .binary_deployments
-                .first()
-                .unwrap_or(&Default::default()),
+            &binary_deployment,
             &target_info,
         )
         .await?;

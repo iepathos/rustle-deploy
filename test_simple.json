@@ -1,0 +1,64 @@
+{
+  "plays": [
+    {
+      "play_id": "play-0",
+      "name": "Test Play",
+      "strategy": "Linear",
+      "serial": null,
+      "hosts": ["localhost"],
+      "estimated_duration": null,
+      "batches": [
+        {
+          "batch_id": "test-batch",
+          "tasks": [
+            {
+              "task_id": "task_0",
+              "name": "Debug task",
+              "module": "debug",
+              "args": {
+                "msg": "hello world"
+              },
+              "hosts": ["localhost"],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 0
+            },
+            {
+              "task_id": "task_1", 
+              "name": "Package task",
+              "module": "package",
+              "args": {
+                "name": "git",
+                "state": "present"
+              },
+              "hosts": ["localhost"],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 1
+            },
+            {
+              "task_id": "task_2",
+              "name": "Command task",
+              "module": "command", 
+              "args": {
+                "_raw_params": "/bin/true"
+              },
+              "hosts": ["localhost"],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 2
+            }
+          ]
+        }
+      ],
+      "handlers": []
+    }
+  ],
+  "total_tasks": 3
+}
