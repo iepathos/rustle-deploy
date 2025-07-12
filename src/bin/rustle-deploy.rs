@@ -1,9 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use rustle_deploy::compilation::TargetDetector;
-use rustle_deploy::types::compilation::OptimizationLevel;
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
+use rustle_deploy::types::compilation::OptimizationLevel;
 use rustle_deploy::types::Platform;
 use std::path::PathBuf;
 use tracing::{error, info, warn};
