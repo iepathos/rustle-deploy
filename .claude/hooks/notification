@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# Claude Code Notification Hook for macOS
+# This script provides text-to-speech notifications for Claude Code events
+
+# Configuration
+VOICE="Zoe"  # macOS voice (alternatives: Alex, Victoria, Karen, etc.)
+RATE="160"        # Speaking rate (words per minute)
+
+# Function to speak notification
+speak_notification() {
+    local message="$1"
+    say -v "$VOICE" -r "$RATE" "$message" &
+}
+
+# Parse the hook event and arguments
+EVENT="$1"
+shift
+ARGS="$*"
+
+case "$EVENT" in
+    "tool_call_start")
+        # Extract tool name from arguments
+        TOOL=$(echo "$ARGS" | grep -o '"name":\s*"[^"]*"' | sed 's/"name":\s*"//' | sed 's/"//')
+        if [ -n "$TOOL" ]; then
+            speak_notification "Claude is using $TOOL"
+        fi
+        ;;
+    
+    "tool_call_end")
+        # Tool execution completed
+        TOOL=$(echo "$ARGS" | grep -o '"name":\s*"[^"]*"' | sed 's/"name":\s*"//' | sed 's/"//')
+        if [ -n "$TOOL" ]; then
+            speak_notification "$TOOL completed"
+        fi
+        ;;
+    
+    "user_input_required")
+        # Claude needs user input
+        speak_notification "Claude needs your input"
+        ;;
+    
+    "task_completed")
+        # Task or job completed
+        speak_notification "Claude has completed the task"
+        ;;
+    
+    "error")
+        # Error occurred
+        speak_notification "Claude encountered an error"
+        ;;
+    
+    "thinking_start")
+        # Claude started thinking (extended thinking mode)
+        speak_notification "Claude is thinking"
+        ;;
+    
+    "thinking_end")
+        # Claude finished thinking
+        speak_notification "Claude finished thinking"
+        ;;
+    
+    "plan_mode_exit")
+        # Exiting plan mode
+        speak_notification "Claude is ready to implement the plan"
+        ;;
+    
+    *)
+        # Generic notification for unknown events
+        if [ -n "$EVENT" ]; then
+            speak_notification "Claude event: $EVENT"
+        fi
+        ;;
+esac
+
+# Exit successfully
+exit 0
