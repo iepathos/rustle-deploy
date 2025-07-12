@@ -80,7 +80,9 @@ impl BinaryOptimizer {
                 flags.push("-C opt-level=3".to_string());
                 flags.push("-C debuginfo=2".to_string());
             }
-            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => {
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => {
                 flags.push("-C opt-level=z".to_string());
                 flags.push("-C panic=abort".to_string());
                 flags.push("-C codegen-units=1".to_string());
@@ -133,7 +135,9 @@ impl BinaryOptimizer {
             OptimizationLevel::Debug => 15_000_000, // ~15MB base for debug
             OptimizationLevel::Release | OptimizationLevel::Aggressive => 8_000_000, // ~8MB base for release
             OptimizationLevel::ReleaseWithDebugInfo => 12_000_000, // ~12MB with debug info
-            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => 4_000_000, // ~4MB minimal size
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => 4_000_000, // ~4MB minimal size
         };
 
         let mut estimated_size = base_size + embedded_size;

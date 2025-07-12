@@ -60,7 +60,9 @@ impl CargoBackend {
             OptimizationLevel::Debug => "dev",
             OptimizationLevel::Release | OptimizationLevel::Aggressive => "release",
             OptimizationLevel::ReleaseWithDebugInfo => "release",
-            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => "release", // Will use additional flags
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => "release", // Will use additional flags
         }
     }
 

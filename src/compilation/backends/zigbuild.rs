@@ -66,7 +66,9 @@ impl ZigBuildBackend {
             OptimizationLevel::Debug => "dev",
             OptimizationLevel::Release | OptimizationLevel::Aggressive => "release",
             OptimizationLevel::ReleaseWithDebugInfo => "release",
-            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => "release",
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => "release",
         }
     }
 
