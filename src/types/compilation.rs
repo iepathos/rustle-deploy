@@ -18,7 +18,7 @@ use std::time::Duration;
 /// # Examples
 ///
 /// ```rust
-/// use crate::types::compilation::OptimizationLevel;
+/// use rustle_deploy::types::compilation::OptimizationLevel;
 ///
 /// let opt_level = OptimizationLevel::Release;
 /// assert!(matches!(opt_level, OptimizationLevel::Release));
