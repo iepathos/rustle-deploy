@@ -70,15 +70,5 @@
         "Bash(cargo expand:*)"
       ],
       "deny": []
-    },
-    "hooks": {
-      "tool_call_start": ["./hooks/notification"],
-      "tool_call_end": ["./hooks/notification"],
-      "user_input_required": ["./hooks/notification"],
-      "task_completed": ["./hooks/notification"],
-      "error": ["./hooks/notification"],
-      "thinking_start": ["./hooks/notification"],
-      "thinking_end": ["./hooks/notification"],
-      "plan_mode_exit": ["./hooks/notification"]
     }
   }
