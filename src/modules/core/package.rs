@@ -13,6 +13,7 @@ use crate::modules::{
 };
 
 #[derive(Debug, PartialEq)]
+#[cfg(target_os = "linux")]
 enum LinuxDistribution {
     Debian,
     Ubuntu,
