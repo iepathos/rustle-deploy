@@ -71,6 +71,18 @@ impl BinaryCompiler {
             checksum: checksum.clone(),
             size,
             compilation_time,
+            optimization_level: compilation.compilation_options.optimization_level.clone(),
+            source_info: crate::types::compilation::BinarySourceInfo {
+                source_type: crate::types::compilation::BinarySourceType::FreshCompilation {
+                    project_path: compilation.output_path.clone(),
+                },
+                template_hash: "generated".to_string(),
+                build_metadata: crate::types::compilation::BuildMetadata {
+                    created_at: chrono::Utc::now(),
+                    toolchain_version: "cargo".to_string(),
+                    features: compilation.compilation_options.custom_features.clone(),
+                },
+            },
         };
 
         // Cache the result
@@ -92,7 +104,7 @@ impl BinaryCompiler {
         &self,
         source_dir: &Path,
         target_triple: &str,
-        options: &CompilationOptions,
+        options: &LegacyCompilationOptions,
     ) -> Result<Vec<u8>> {
         info!("Cross-compiling for target: {}", target_triple);
 

@@ -41,7 +41,11 @@ pub enum OptimizationLevel {
 
 impl std::fmt::Display for ZigCompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Zig compilation failed for {}: {}", self.target, self.message)
+        write!(
+            f,
+            "Zig compilation failed for {}: {}",
+            self.target, self.message
+        )
     }
 }
 
@@ -60,10 +64,13 @@ impl ZigBuildCompiler {
             .map_err(|e| DeployError::Configuration(format!("cargo not found: {}", e)))?;
 
         let zig_path = which::which("zig").ok();
-        
+
         let build_cache_dir = cache_dir.join("zigbuild");
-        tokio::fs::create_dir_all(&build_cache_dir).await
-            .map_err(|e| DeployError::Configuration(format!("Failed to create build cache directory: {}", e)))?;
+        tokio::fs::create_dir_all(&build_cache_dir)
+            .await
+            .map_err(|e| {
+                DeployError::Configuration(format!("Failed to create build cache directory: {}", e))
+            })?;
 
         Ok(Self {
             cargo_path,
@@ -80,13 +87,17 @@ impl ZigBuildCompiler {
         optimization: OptimizationLevel,
     ) -> Result<CompiledBinary> {
         let start_time = std::time::Instant::now();
-        
-        info!("Starting Zig cross-compilation for target: {}", target.triple);
+
+        info!(
+            "Starting Zig cross-compilation for target: {}",
+            target.triple
+        );
 
         // Validate that we can use zigbuild for this target
         if !matches!(target.compilation_strategy, CompilationStrategy::ZigBuild) {
             return Err(DeployError::Configuration(format!(
-                "Target {} is not configured for Zig compilation", target.triple
+                "Target {} is not configured for Zig compilation",
+                target.triple
             )));
         }
 
@@ -130,34 +141,43 @@ impl ZigBuildCompiler {
         debug!("Executing cargo zigbuild with command: {:?}", cmd);
 
         // Execute compilation
-        let output = cmd.output().await
-            .map_err(|e| DeployError::Configuration(format!("Failed to execute cargo zigbuild: {}", e)))?;
+        let output = cmd.output().await.map_err(|e| {
+            DeployError::Configuration(format!("Failed to execute cargo zigbuild: {}", e))
+        })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let exit_code = output.status.code();
-            
+
             warn!("Zig compilation failed for {}: {}", target.triple, stderr);
-            
+
             return Err(ZigCompilationError {
                 message: "Compilation failed".to_string(),
                 target: target.triple.clone(),
                 exit_code,
                 stderr: stderr.to_string(),
-            }.into());
+            }
+            .into());
         }
 
         // Find the compiled binary
-        let binary_path = self.find_compiled_binary(&target_dir, &target.triple).await?;
-        
+        let binary_path = self
+            .find_compiled_binary(&target_dir, &target.triple)
+            .await?;
+
         // Get binary information
-        let metadata = tokio::fs::metadata(&binary_path).await
-            .map_err(|e| DeployError::Configuration(format!("Failed to read binary metadata: {}", e)))?;
+        let metadata = tokio::fs::metadata(&binary_path).await.map_err(|e| {
+            DeployError::Configuration(format!("Failed to read binary metadata: {}", e))
+        })?;
 
         let compilation_time = start_time.elapsed();
 
-        info!("Successfully compiled {} binary ({} bytes) in {:?}", 
-              target.triple, metadata.len(), compilation_time);
+        info!(
+            "Successfully compiled {} binary ({} bytes) in {:?}",
+            target.triple,
+            metadata.len(),
+            compilation_time
+        );
 
         Ok(CompiledBinary {
             target_triple: target.triple.clone(),
@@ -194,7 +214,9 @@ impl ZigBuildCompiler {
             .args(["targets"])
             .output()
             .await
-            .map_err(|e| DeployError::Configuration(format!("Failed to query Zig targets: {}", e)))?;
+            .map_err(|e| {
+                DeployError::Configuration(format!("Failed to query Zig targets: {}", e))
+            })?;
 
         if !output.status.success() {
             return Ok(vec![]);
@@ -225,18 +247,18 @@ impl ZigBuildCompiler {
 
         // Check Zig
         if let Some(zig_path) = &self.zig_path {
-            let output = Command::new(zig_path)
-                .args(["version"])
-                .output()
-                .await;
+            let output = Command::new(zig_path).args(["version"]).output().await;
 
             match output {
                 Ok(output) if output.status.success() => {
                     validation.zig_available = true;
-                    validation.zig_version = Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
+                    validation.zig_version =
+                        Some(String::from_utf8_lossy(&output.stdout).trim().to_string());
                 }
                 _ => {
-                    validation.issues.push("Zig executable found but not working".to_string());
+                    validation
+                        .issues
+                        .push("Zig executable found but not working".to_string());
                 }
             }
         } else {
@@ -256,7 +278,9 @@ impl ZigBuildCompiler {
                 validation.zigbuild_available = true;
             }
             _ => {
-                validation.issues.push("cargo-zigbuild not available".to_string());
+                validation
+                    .issues
+                    .push("cargo-zigbuild not available".to_string());
             }
         }
 
@@ -269,12 +293,20 @@ impl ZigBuildCompiler {
     }
 
     /// Find the compiled binary in the target directory
-    async fn find_compiled_binary(&self, target_dir: &Path, target_triple: &str) -> Result<PathBuf> {
+    async fn find_compiled_binary(
+        &self,
+        target_dir: &Path,
+        target_triple: &str,
+    ) -> Result<PathBuf> {
         let release_dir = target_dir.join(target_triple).join("release");
-        
+
         // Try common binary names
         let binary_names = vec!["rustle-executor", "executor", "main"];
-        let binary_extension = if target_triple.contains("windows") { ".exe" } else { "" };
+        let binary_extension = if target_triple.contains("windows") {
+            ".exe"
+        } else {
+            ""
+        };
 
         for name in binary_names {
             let binary_path = release_dir.join(format!("{}{}", name, binary_extension));
@@ -284,8 +316,9 @@ impl ZigBuildCompiler {
         }
 
         // If not found, try to find any executable in the release directory
-        let mut entries = tokio::fs::read_dir(&release_dir).await
-            .map_err(|e| DeployError::Configuration(format!("Failed to read release directory: {}", e)))?;
+        let mut entries = tokio::fs::read_dir(&release_dir).await.map_err(|e| {
+            DeployError::Configuration(format!("Failed to read release directory: {}", e))
+        })?;
 
         while let Ok(Some(entry)) = entries.next_entry().await {
             let path = entry.path();
@@ -299,7 +332,8 @@ impl ZigBuildCompiler {
         }
 
         Err(DeployError::Configuration(format!(
-            "Compiled binary not found in {}", release_dir.display()
+            "Compiled binary not found in {}",
+            release_dir.display()
         )))
     }
 }
@@ -317,9 +351,13 @@ impl ZigBuildValidation {
     pub fn is_fully_functional(&self) -> bool {
         self.zig_available && self.zigbuild_available && self.issues.is_empty()
     }
-    
+
     pub fn readiness_level(&self) -> ReadinessLevel {
-        match (self.zig_available, self.zigbuild_available, self.issues.is_empty()) {
+        match (
+            self.zig_available,
+            self.zigbuild_available,
+            self.issues.is_empty(),
+        ) {
             (true, true, true) => ReadinessLevel::FullyReady,
             (true, true, false) => ReadinessLevel::MostlyReady,
             (true, false, _) => ReadinessLevel::BasicReady,
@@ -330,8 +368,8 @@ impl ZigBuildValidation {
 
 #[derive(Debug, Clone)]
 pub enum ReadinessLevel {
-    FullyReady,      // All components available, all targets supported
-    MostlyReady,     // Some cross-compilation available
-    BasicReady,      // Native compilation only
-    NotReady,        // Missing essential components
+    FullyReady,  // All components available, all targets supported
+    MostlyReady, // Some cross-compilation available
+    BasicReady,  // Native compilation only
+    NotReady,    // Missing essential components
 }

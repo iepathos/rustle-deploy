@@ -351,7 +351,7 @@ impl DeploymentManager {
                     },
                     facts_template: execution_plan.facts_template.global_facts.clone(),
                 },
-                compilation_options: CompilationOptions {
+                compilation_options: LegacyCompilationOptions {
                     optimization_level: OptimizationLevel::Release,
                     strip_symbols: self.config.strip_symbols,
                     static_linking: true,

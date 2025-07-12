@@ -19,9 +19,9 @@ pub struct CompilationCapabilities {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CapabilityLevel {
-    Full,        // Zig + cargo-zigbuild available, all targets supported
-    Limited,     // Rust only, native target and some cross-compilation
-    Minimal,     // Rust only, native target only
+    Full,         // Zig + cargo-zigbuild available, all targets supported
+    Limited,      // Rust only, native target and some cross-compilation
+    Minimal,      // Rust only, native target only
     Insufficient, // Missing requirements
 }
 
@@ -78,7 +78,9 @@ impl CompilationCapabilities {
         // Check Rust installation
         if let Ok(rust) = detect_rust_installation().await {
             capabilities.rust_version = Some(rust.version);
-            capabilities.available_targets.insert(capabilities.native_target.clone());
+            capabilities
+                .available_targets
+                .insert(capabilities.native_target.clone());
             capabilities.capability_level = CapabilityLevel::Minimal;
         }
 
@@ -98,7 +100,10 @@ impl CompilationCapabilities {
             }
         }
 
-        debug!("Basic capability detection completed: {:?}", capabilities.capability_level);
+        debug!(
+            "Basic capability detection completed: {:?}",
+            capabilities.capability_level
+        );
         Ok(capabilities)
     }
 
@@ -120,7 +125,10 @@ impl CompilationCapabilities {
             }
         }
 
-        info!("Full capability detection completed: {} targets available", capabilities.available_targets.len());
+        info!(
+            "Full capability detection completed: {} targets available",
+            capabilities.available_targets.len()
+        );
         Ok(capabilities)
     }
 
@@ -132,7 +140,9 @@ impl CompilationCapabilities {
             recommendations.push(SetupRecommendation {
                 improvement: "Install Rust toolchain".to_string(),
                 impact: ImpactLevel::Critical,
-                installation_command: Some("curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh".to_string()),
+                installation_command: Some(
+                    "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh".to_string(),
+                ),
                 description: "Rust is required for all compilation functionality".to_string(),
             });
         }
@@ -141,15 +151,21 @@ impl CompilationCapabilities {
             recommendations.push(SetupRecommendation {
                 improvement: "Install Zig for enhanced cross-compilation".to_string(),
                 impact: ImpactLevel::High,
-                installation_command: Some("Visit https://ziglang.org/download/ for installation".to_string()),
-                description: "Zig enables zero-infrastructure cross-compilation to all supported targets".to_string(),
+                installation_command: Some(
+                    "Visit https://ziglang.org/download/ for installation".to_string(),
+                ),
+                description:
+                    "Zig enables zero-infrastructure cross-compilation to all supported targets"
+                        .to_string(),
             });
         } else if !self.zigbuild_available {
             recommendations.push(SetupRecommendation {
                 improvement: "Install cargo-zigbuild".to_string(),
                 impact: ImpactLevel::High,
                 installation_command: Some("cargo install cargo-zigbuild".to_string()),
-                description: "cargo-zigbuild integrates Zig with Cargo for seamless cross-compilation".to_string(),
+                description:
+                    "cargo-zigbuild integrates Zig with Cargo for seamless cross-compilation"
+                        .to_string(),
             });
         }
 
@@ -158,7 +174,8 @@ impl CompilationCapabilities {
                 improvement: "Add cross-compilation targets".to_string(),
                 impact: ImpactLevel::Medium,
                 installation_command: Some("rustup target add <target-triple>".to_string()),
-                description: "Additional targets enable deployment to diverse architectures".to_string(),
+                description: "Additional targets enable deployment to diverse architectures"
+                    .to_string(),
             });
         }
 
@@ -202,7 +219,9 @@ pub async fn detect_rust_installation() -> Result<RustInstallation> {
         .map_err(|e| DeployError::Configuration(format!("Failed to run rustc: {}", e)))?;
 
     if !output.status.success() {
-        return Err(DeployError::Configuration("rustc command failed".to_string()));
+        return Err(DeployError::Configuration(
+            "rustc command failed".to_string(),
+        ));
     }
 
     let version_output = String::from_utf8_lossy(&output.stdout);

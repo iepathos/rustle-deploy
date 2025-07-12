@@ -15,6 +15,13 @@ pub enum OutputError {
     #[error("Copy verification failed: expected {expected} bytes, got {actual}")]
     VerificationFailed { expected: u64, actual: u64 },
 
+    #[error("Copy failed from {source_path} to {destination}: {message}")]
+    CopyFailed {
+        source_path: String,
+        destination: PathBuf,
+        message: String,
+    },
+
     #[error("Insufficient disk space: need {needed} bytes, available {available}")]
     InsufficientSpace { needed: u64, available: u64 },
 

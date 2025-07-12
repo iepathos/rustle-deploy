@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
+use crate::types::compilation::{BinarySourceType, CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;
@@ -17,38 +17,36 @@ impl ProjectOutputStrategy {
 
 #[async_trait]
 impl OutputStrategy for ProjectOutputStrategy {
+    type Error = OutputError;
     async fn copy_binary(
         &self,
         binary: &CompiledBinary,
         output_path: &Path,
-    ) -> Result<CopyResult, OutputError> {
+    ) -> Result<CopyResult, Self::Error> {
         let start_time = Instant::now();
-
-        let project_path = &binary.binary_path;
-
-        // Verify project binary exists and is accessible
-        if !project_path.exists() {
-            return Err(OutputError::SourceNotFound {
-                path: project_path.clone(),
-            });
-        }
 
         // Create output directory if needed
         if let Some(parent) = output_path.parent() {
             tokio::fs::create_dir_all(parent).await?;
         }
 
-        // Atomic copy operation
-        let temp_path = output_path.with_extension("tmp");
-        tokio::fs::copy(project_path, &temp_path).await?;
-        tokio::fs::rename(&temp_path, output_path).await?;
+        // Write binary data to output path
+        match tokio::fs::write(output_path, &binary.binary_data).await {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(OutputError::CopyFailed {
+                    source_path: "binary_data".into(),
+                    destination: output_path.to_path_buf(),
+                    message: e.to_string(),
+                })
+            }
+        }
 
         // Verify copy integrity
         let copied_size = tokio::fs::metadata(output_path).await?.len();
 
         debug!(
-            "Copied binary from project: {} -> {} ({} bytes)",
-            project_path.display(),
+            "Copied binary from project data to {} ({} bytes)",
             output_path.display(),
             copied_size
         );
@@ -61,8 +59,8 @@ impl OutputStrategy for ProjectOutputStrategy {
         })
     }
 
-    fn can_handle(&self, source: &BinarySource) -> bool {
-        matches!(source, BinarySource::FreshCompilation { .. })
+    fn can_handle(&self, source_type: &BinarySourceType) -> bool {
+        matches!(source_type, BinarySourceType::FreshCompilation { .. })
     }
 
     fn priority(&self) -> u8 {

@@ -1,8 +1,8 @@
+use crate::compilation::cache::CompilationCache;
 use crate::compilation::capabilities::{CompilationCapabilities, CompilationStrategy};
 use crate::compilation::optimizer::{DeploymentOptimizer, DeploymentPlan};
 use crate::compilation::toolchain::TargetSpecification;
-use crate::compilation::zigbuild::{ZigBuildCompiler, CompiledBinary, OptimizationLevel};
-use crate::compilation::cache::CompilationCache;
+use crate::compilation::zigbuild::{CompiledBinary, OptimizationLevel, ZigBuildCompiler};
 use crate::deploy::{DeployError, Result};
 use crate::template::GeneratedTemplate;
 use crate::ParsedInventory;
@@ -45,11 +45,11 @@ impl ZeroInfraCompiler {
     /// Detect capabilities and create new compiler instance
     pub async fn detect_capabilities(cache_dir: PathBuf) -> Result<Self> {
         info!("Detecting zero-infrastructure compilation capabilities");
-        
+
         let capabilities = CompilationCapabilities::detect_full().await?;
         let cache = CompilationCache::new(cache_dir.join("compilation"), true);
         let optimizer = DeploymentOptimizer::new();
-        
+
         // Initialize ZigBuild compiler if available
         let zigbuild_compiler = if capabilities.zigbuild_available {
             match ZigBuildCompiler::new(cache_dir.join("zigbuild")).await {
@@ -84,15 +84,16 @@ impl ZeroInfraCompiler {
         info!("Creating deployment plan with zero-infrastructure compilation");
 
         // Parse execution plan from embedded data
-        let execution_plan: crate::execution::RustlePlanOutput = serde_json::from_str(&template.embedded_data.execution_plan)
-            .map_err(|e| DeployError::Configuration(format!("Failed to parse execution plan: {}", e)))?;
+        let execution_plan: crate::execution::RustlePlanOutput =
+            serde_json::from_str(&template.embedded_data.execution_plan).map_err(|e| {
+                DeployError::Configuration(format!("Failed to parse execution plan: {}", e))
+            })?;
 
         // Analyze optimization potential
-        let analysis = self.optimizer.analyze_optimization_potential(
-            &execution_plan,
-            &self.capabilities,
-            inventory,
-        ).await?;
+        let analysis = self
+            .optimizer
+            .analyze_optimization_potential(&execution_plan, &self.capabilities, inventory)
+            .await?;
 
         debug!("Optimization analysis: {:?}", analysis);
 
@@ -103,12 +104,15 @@ impl ZeroInfraCompiler {
 
         // Create optimal deployment plan
         let mut deployment_plan = DeploymentPlan::new();
-        
+
         // Group hosts by target architecture
         let target_groups = self.group_hosts_by_target(inventory).await?;
-        
+
         for (target_triple, hosts) in target_groups {
-            match self.compile_for_target(template, &target_triple, &hosts).await {
+            match self
+                .compile_for_target(template, &target_triple, &hosts)
+                .await
+            {
                 Ok(binary_deployment) => {
                     deployment_plan.binary_deployments.push(binary_deployment);
                 }
@@ -116,20 +120,27 @@ impl ZeroInfraCompiler {
                     warn!("Failed to compile for target {}: {}", target_triple, e);
                     // Add SSH fallback for this target
                     deployment_plan.ssh_deployments.push(
-                        self.create_ssh_deployment_for_hosts(template, &hosts, 
-                            FallbackReason::CompilationFailure).await?
+                        self.create_ssh_deployment_for_hosts(
+                            template,
+                            &hosts,
+                            FallbackReason::CompilationFailure,
+                        )
+                        .await?,
                     );
                 }
             }
         }
 
         // Calculate performance metrics
-        deployment_plan.estimated_performance_gain = self.estimate_performance_gain(&deployment_plan);
+        deployment_plan.estimated_performance_gain =
+            self.estimate_performance_gain(&deployment_plan);
         deployment_plan.total_targets = inventory.hosts.len();
 
-        info!("Deployment plan created: {} binary deployments, {} SSH fallbacks", 
-              deployment_plan.binary_deployments.len(),
-              deployment_plan.ssh_deployments.len());
+        info!(
+            "Deployment plan created: {} binary deployments, {} SSH fallbacks",
+            deployment_plan.binary_deployments.len(),
+            deployment_plan.ssh_deployments.len()
+        );
 
         Ok(deployment_plan)
     }
@@ -140,30 +151,31 @@ impl ZeroInfraCompiler {
         template: &GeneratedTemplate,
         target: &TargetSpecification,
     ) -> Result<CompiledBinary> {
-        let zigbuild_compiler = self.zigbuild_compiler.as_ref()
-            .ok_or_else(|| CompilationError {
-                message: "ZigBuild compiler not available".to_string(),
-                target: Some(target.triple.clone()),
-                recoverable: false,
-            })?;
+        let zigbuild_compiler =
+            self.zigbuild_compiler
+                .as_ref()
+                .ok_or_else(|| CompilationError {
+                    message: "ZigBuild compiler not available".to_string(),
+                    target: Some(target.triple.clone()),
+                    recoverable: false,
+                })?;
 
         // TODO: Check cache first (temporarily disabled due to type mismatch)
         // Need to convert between compiler::CompiledBinary and zigbuild::CompiledBinary
 
         // Generate template specifically for this target
         // For now, use a temporary directory for template preparation
-        let template_dir = std::env::temp_dir().join(format!("rustle-template-{}", uuid::Uuid::new_v4()));
+        let template_dir =
+            std::env::temp_dir().join(format!("rustle-template-{}", uuid::Uuid::new_v4()));
         tokio::fs::create_dir_all(&template_dir).await?;
 
         // Compile with appropriate optimization level
         // Default to release optimization for now
         let optimization = OptimizationLevel::Release;
 
-        let binary = zigbuild_compiler.compile_with_zigbuild(
-            &template_dir,
-            target,
-            optimization,
-        ).await?;
+        let binary = zigbuild_compiler
+            .compile_with_zigbuild(&template_dir, target, optimization)
+            .await?;
 
         // Cache the compiled binary
         // Store binary in cache - simplified for now
@@ -179,11 +191,11 @@ impl ZeroInfraCompiler {
 
     /// Check if target requires fallback to SSH
     pub fn requires_fallback(&self, target: &str) -> bool {
-        !self.capabilities.supports_target(target) ||
-        matches!(
-            self.capabilities.get_strategy_for_target(target),
-            CompilationStrategy::SshFallback
-        )
+        !self.capabilities.supports_target(target)
+            || matches!(
+                self.capabilities.get_strategy_for_target(target),
+                CompilationStrategy::SshFallback
+            )
     }
 
     /// Validate toolchain installation
@@ -202,26 +214,30 @@ impl ZeroInfraCompiler {
         // Validate Rust
         match crate::compilation::capabilities::detect_rust_installation().await {
             Ok(rust_install) => {
-                result.rust_status = ComponentStatus::Available { 
-                    version: rust_install.version 
+                result.rust_status = ComponentStatus::Available {
+                    version: rust_install.version,
                 };
             }
             Err(e) => {
                 result.issues.push(format!("Rust validation failed: {}", e));
-                result.recommendations.push("Install Rust toolchain".to_string());
+                result
+                    .recommendations
+                    .push("Install Rust toolchain".to_string());
             }
         }
 
         // Validate Zig
         match crate::compilation::capabilities::detect_zig_installation().await {
             Ok(Some(zig_install)) => {
-                result.zig_status = ComponentStatus::Available { 
-                    version: zig_install.version 
+                result.zig_status = ComponentStatus::Available {
+                    version: zig_install.version,
                 };
             }
             Ok(None) => {
                 result.zig_status = ComponentStatus::Missing;
-                result.recommendations.push("Install Zig for enhanced cross-compilation".to_string());
+                result
+                    .recommendations
+                    .push("Install Zig for enhanced cross-compilation".to_string());
             }
             Err(e) => {
                 result.issues.push(format!("Zig validation failed: {}", e));
@@ -231,32 +247,40 @@ impl ZeroInfraCompiler {
         // Validate cargo-zigbuild
         match crate::compilation::capabilities::is_zigbuild_available().await {
             Ok(true) => {
-                result.zigbuild_status = ComponentStatus::Available { 
-                    version: "unknown".to_string() 
+                result.zigbuild_status = ComponentStatus::Available {
+                    version: "unknown".to_string(),
                 };
             }
             Ok(false) => {
                 result.zigbuild_status = ComponentStatus::Missing;
                 if result.zig_status != ComponentStatus::Missing {
-                    result.recommendations.push("Install cargo-zigbuild".to_string());
+                    result
+                        .recommendations
+                        .push("Install cargo-zigbuild".to_string());
                 }
             }
             Err(e) => {
-                result.issues.push(format!("cargo-zigbuild validation failed: {}", e));
+                result
+                    .issues
+                    .push(format!("cargo-zigbuild validation failed: {}", e));
             }
         }
 
         // Determine overall status
-        result.overall_status = match (&result.rust_status, &result.zig_status, &result.zigbuild_status) {
-            (ComponentStatus::Available { .. }, ComponentStatus::Available { .. }, ComponentStatus::Available { .. }) => {
-                ValidationStatus::Excellent
-            }
+        result.overall_status = match (
+            &result.rust_status,
+            &result.zig_status,
+            &result.zigbuild_status,
+        ) {
+            (
+                ComponentStatus::Available { .. },
+                ComponentStatus::Available { .. },
+                ComponentStatus::Available { .. },
+            ) => ValidationStatus::Excellent,
             (ComponentStatus::Available { .. }, _, ComponentStatus::Available { .. }) => {
                 ValidationStatus::Good
             }
-            (ComponentStatus::Available { .. }, _, _) => {
-                ValidationStatus::Minimal
-            }
+            (ComponentStatus::Available { .. }, _, _) => ValidationStatus::Minimal,
             _ => ValidationStatus::Failed,
         };
 
@@ -265,13 +289,16 @@ impl ZeroInfraCompiler {
 
     // Private helper methods
 
-    async fn group_hosts_by_target(&self, inventory: &ParsedInventory) -> Result<HashMap<String, Vec<String>>> {
+    async fn group_hosts_by_target(
+        &self,
+        inventory: &ParsedInventory,
+    ) -> Result<HashMap<String, Vec<String>>> {
         let mut target_groups: HashMap<String, Vec<String>> = HashMap::new();
 
         for host in &inventory.hosts {
             // Detect target architecture for this host
             let target_triple = self.detect_target_for_host(&host.0).await?;
-            
+
             target_groups
                 .entry(target_triple)
                 .or_insert_with(Vec::new)
@@ -298,7 +325,8 @@ impl ZeroInfraCompiler {
             triple: target_triple.to_string(),
             platform: crate::compilation::toolchain::Platform::Linux, // Simplified
             architecture: crate::compilation::toolchain::Architecture::X86_64, // Simplified
-            requires_zig: self.capabilities.get_strategy_for_target(target_triple) == CompilationStrategy::ZigBuild,
+            requires_zig: self.capabilities.get_strategy_for_target(target_triple)
+                == CompilationStrategy::ZigBuild,
             compilation_strategy: self.capabilities.get_strategy_for_target(target_triple),
         };
 
@@ -317,17 +345,23 @@ impl ZeroInfraCompiler {
         inventory: &ParsedInventory,
     ) -> Result<DeploymentPlan> {
         let mut plan = DeploymentPlan::new();
-        
-        let ssh_deployment = self.create_ssh_deployment_for_hosts(
-            template,
-            &inventory.hosts.iter().map(|h| h.0.clone()).collect::<Vec<_>>(),
-            FallbackReason::UserPreference,
-        ).await?;
-        
+
+        let ssh_deployment = self
+            .create_ssh_deployment_for_hosts(
+                template,
+                &inventory
+                    .hosts
+                    .iter()
+                    .map(|h| h.0.clone())
+                    .collect::<Vec<_>>(),
+                FallbackReason::UserPreference,
+            )
+            .await?;
+
         plan.ssh_deployments.push(ssh_deployment);
         plan.total_targets = inventory.hosts.len();
         plan.estimated_performance_gain = 0.0; // No optimization
-        
+
         Ok(plan)
     }
 
@@ -351,7 +385,7 @@ impl ZeroInfraCompiler {
         }
 
         let binary_ratio = plan.binary_deployments.len() as f32 / total_deployments as f32;
-        
+
         // Estimate 2-10x performance gain for binary deployments
         // This is a simplified calculation based on the ratio of binary vs SSH deployments
         binary_ratio * 5.0 // Average 5x speedup for binary deployments

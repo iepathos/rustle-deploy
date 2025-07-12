@@ -664,4 +664,47 @@ impl GeneratedTemplate {
 
         format!("{:x}", hasher.finalize())
     }
+
+    /// Write the template files to a directory
+    pub async fn write_to_directory(&self, target_dir: &std::path::Path) -> anyhow::Result<()> {
+        use anyhow::Context;
+        use tokio::fs;
+
+        // Create the target directory if it doesn't exist
+        fs::create_dir_all(target_dir)
+            .await
+            .context("Failed to create target directory")?;
+
+        // Write Cargo.toml
+        let cargo_toml_path = target_dir.join("Cargo.toml");
+        fs::write(&cargo_toml_path, &self.cargo_toml)
+            .await
+            .context("Failed to write Cargo.toml")?;
+
+        // Write source files
+        for (file_path, content) in &self.source_files {
+            let full_path = target_dir.join(file_path);
+
+            // Create parent directory if needed
+            if let Some(parent) = full_path.parent() {
+                fs::create_dir_all(parent)
+                    .await
+                    .with_context(|| format!("Failed to create directory: {}", parent.display()))?;
+            }
+
+            fs::write(&full_path, content)
+                .await
+                .with_context(|| format!("Failed to write file: {}", file_path.display()))?;
+        }
+
+        // Write build script if present
+        if let Some(build_script) = &self.build_script {
+            let build_script_path = target_dir.join("build.rs");
+            fs::write(&build_script_path, build_script)
+                .await
+                .context("Failed to write build script")?;
+        }
+
+        Ok(())
+    }
 }

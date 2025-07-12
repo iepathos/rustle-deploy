@@ -81,6 +81,18 @@ impl CompilationCache {
             checksum: entry.checksum.clone(),
             size: entry.size,
             compilation_time: entry.compilation_time,
+            optimization_level: crate::types::compilation::OptimizationLevel::Release, // Default for cache
+            source_info: crate::types::compilation::BinarySourceInfo {
+                source_type: crate::types::compilation::BinarySourceType::Cache {
+                    cache_path: entry.binary_path.clone(),
+                },
+                template_hash: "cached".to_string(),
+                build_metadata: crate::types::compilation::BuildMetadata {
+                    created_at: chrono::Utc::now(),
+                    toolchain_version: "unknown".to_string(),
+                    features: Vec::new(),
+                },
+            },
         })
     }
 

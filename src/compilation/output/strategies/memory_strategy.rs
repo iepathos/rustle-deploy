@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
+use crate::types::compilation::{BinarySourceType, CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;
@@ -17,17 +17,20 @@ impl InMemoryOutputStrategy {
 
 #[async_trait]
 impl OutputStrategy for InMemoryOutputStrategy {
+    type Error = OutputError;
     async fn copy_binary(
         &self,
         binary: &CompiledBinary,
         output_path: &Path,
-    ) -> Result<CopyResult, OutputError> {
+    ) -> Result<CopyResult, Self::Error> {
         let start_time = Instant::now();
 
         // This strategy can handle any source type by using the binary_data field
         if binary.binary_data.is_empty() {
-            return Err(OutputError::SourceNotFound {
-                path: binary.binary_path.clone(),
+            return Err(OutputError::CopyFailed {
+                source_path: "binary_data".into(),
+                destination: output_path.to_path_buf(),
+                message: "Binary data is empty".to_string(),
             });
         }
 
@@ -58,7 +61,7 @@ impl OutputStrategy for InMemoryOutputStrategy {
         })
     }
 
-    fn can_handle(&self, _source: &BinarySource) -> bool {
+    fn can_handle(&self, _source_type: &BinarySourceType) -> bool {
         // Can handle any source type as fallback using binary_data
         true
     }

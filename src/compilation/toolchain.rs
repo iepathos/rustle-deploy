@@ -1,6 +1,4 @@
-use crate::compilation::capabilities::{
-    CompilationCapabilities, SetupRecommendation, ImpactLevel
-};
+use crate::compilation::capabilities::{CompilationCapabilities, ImpactLevel, SetupRecommendation};
 use crate::deploy::{DeployError, Result};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -81,7 +79,9 @@ impl ToolchainDetector {
     /// Detect full capabilities with caching
     pub async fn detect_full_capabilities(&mut self) -> Result<CompilationCapabilities> {
         // Check cache validity
-        if let (Some(cached), Some(timestamp)) = (&self.cache.cached_capabilities, &self.cache.cache_timestamp) {
+        if let (Some(cached), Some(timestamp)) =
+            (&self.cache.cached_capabilities, &self.cache.cache_timestamp)
+        {
             if timestamp.elapsed().unwrap_or(std::time::Duration::MAX) < self.cache.cache_duration {
                 debug!("Using cached capability detection");
                 return Ok(cached.clone());
@@ -90,21 +90,25 @@ impl ToolchainDetector {
 
         info!("Performing full toolchain capability detection");
         let capabilities = CompilationCapabilities::detect_full().await?;
-        
+
         // Update cache
         self.cache.cached_capabilities = Some(capabilities.clone());
         self.cache.cache_timestamp = Some(std::time::SystemTime::now());
-        
+
         Ok(capabilities)
     }
 
     /// Check Rust installation details
-    pub async fn check_rust_installation(&self) -> Result<crate::compilation::capabilities::RustInstallation> {
+    pub async fn check_rust_installation(
+        &self,
+    ) -> Result<crate::compilation::capabilities::RustInstallation> {
         crate::compilation::capabilities::detect_rust_installation().await
     }
 
     /// Check Zig installation details
-    pub async fn check_zig_installation(&self) -> Result<Option<crate::compilation::capabilities::ZigInstallation>> {
+    pub async fn check_zig_installation(
+        &self,
+    ) -> Result<Option<crate::compilation::capabilities::ZigInstallation>> {
         crate::compilation::capabilities::detect_zig_installation().await
     }
 
@@ -121,17 +125,20 @@ impl ToolchainDetector {
         }
 
         info!("Installing cargo-zigbuild");
-        
+
         let output = Command::new("cargo")
             .args(["install", "cargo-zigbuild"])
             .output()
             .await
-            .map_err(|e| DeployError::Configuration(format!("Failed to run cargo install: {}", e)))?;
+            .map_err(|e| {
+                DeployError::Configuration(format!("Failed to run cargo install: {}", e))
+            })?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(DeployError::Configuration(format!(
-                "Failed to install cargo-zigbuild: {}", stderr
+                "Failed to install cargo-zigbuild: {}",
+                stderr
             )));
         }
 
@@ -140,13 +147,19 @@ impl ToolchainDetector {
     }
 
     /// Get supported targets based on current capabilities
-    pub fn get_supported_targets(&self, capabilities: &CompilationCapabilities) -> Vec<TargetSpecification> {
+    pub fn get_supported_targets(
+        &self,
+        capabilities: &CompilationCapabilities,
+    ) -> Vec<TargetSpecification> {
         let mut targets = Vec::new();
-        
+
         for target_triple in &capabilities.available_targets {
             let strategy = capabilities.get_strategy_for_target(target_triple);
-            let requires_zig = matches!(strategy, crate::compilation::capabilities::CompilationStrategy::ZigBuild);
-            
+            let requires_zig = matches!(
+                strategy,
+                crate::compilation::capabilities::CompilationStrategy::ZigBuild
+            );
+
             targets.push(TargetSpecification {
                 triple: target_triple.clone(),
                 platform: Platform::from_target_triple(target_triple),
@@ -155,12 +168,15 @@ impl ToolchainDetector {
                 compilation_strategy: strategy,
             });
         }
-        
+
         targets
     }
 
     /// Generate recommendations for improving the setup
-    pub fn recommend_setup_improvements(&self, capabilities: &CompilationCapabilities) -> Vec<SetupRecommendation> {
+    pub fn recommend_setup_improvements(
+        &self,
+        capabilities: &CompilationCapabilities,
+    ) -> Vec<SetupRecommendation> {
         capabilities.get_recommendations()
     }
 
@@ -211,13 +227,19 @@ impl ToolchainDetector {
                 debug!("cargo-zigbuild not installed");
             }
             Err(e) => {
-                status.issues.push(format!("cargo-zigbuild detection issue: {}", e));
+                status
+                    .issues
+                    .push(format!("cargo-zigbuild detection issue: {}", e));
                 warn!("cargo-zigbuild detection failed: {}", e);
             }
         }
 
         // Determine overall health
-        status.overall_health = match (status.rust_available, status.zig_available, status.zigbuild_available) {
+        status.overall_health = match (
+            status.rust_available,
+            status.zig_available,
+            status.zigbuild_available,
+        ) {
             (true, true, true) => HealthStatus::Excellent,
             (true, _, true) => HealthStatus::Good,
             (true, _, _) => HealthStatus::Fair,

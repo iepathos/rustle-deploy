@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
+use crate::types::compilation::{BinarySourceType, CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;
@@ -17,41 +17,40 @@ impl CacheOutputStrategy {
 
 #[async_trait]
 impl OutputStrategy for CacheOutputStrategy {
+    type Error = OutputError;
     async fn copy_binary(
         &self,
         binary: &CompiledBinary,
         output_path: &Path,
-    ) -> Result<CopyResult, OutputError> {
+    ) -> Result<CopyResult, Self::Error> {
         let start_time = Instant::now();
 
-        // For cache strategy, we use the binary_path directly as cache path
-        let cache_path = &binary.binary_path;
+        // For cache strategy, we write binary data directly
+        debug!(
+            "Cache strategy: writing {} bytes to {}",
+            binary.size,
+            output_path.display()
+        );
 
-        // Verify cache file exists and is accessible
-        if !cache_path.exists() {
-            return Err(OutputError::SourceNotFound {
-                path: cache_path.clone(),
-            });
+        // Write binary data to output path
+        match tokio::fs::write(output_path, &binary.binary_data).await {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(OutputError::CopyFailed {
+                    source_path: "binary_data".into(),
+                    destination: output_path.to_path_buf(),
+                    message: e.to_string(),
+                })
+            }
         }
-
-        // Create output directory if needed
-        if let Some(parent) = output_path.parent() {
-            tokio::fs::create_dir_all(parent).await?;
-        }
-
-        // Atomic copy operation
-        let temp_path = output_path.with_extension("tmp");
-        tokio::fs::copy(cache_path, &temp_path).await?;
-        tokio::fs::rename(&temp_path, output_path).await?;
 
         // Verify copy integrity
         let copied_size = tokio::fs::metadata(output_path).await?.len();
 
         debug!(
-            "Copied binary from cache: {} -> {} ({} bytes)",
-            cache_path.display(),
-            output_path.display(),
-            copied_size
+            "Copied binary from memory: {} bytes to {}",
+            copied_size,
+            output_path.display()
         );
 
         Ok(CopyResult {
@@ -62,8 +61,8 @@ impl OutputStrategy for CacheOutputStrategy {
         })
     }
 
-    fn can_handle(&self, source: &BinarySource) -> bool {
-        matches!(source, BinarySource::Cache { .. })
+    fn can_handle(&self, source_type: &BinarySourceType) -> bool {
+        matches!(source_type, BinarySourceType::Cache { .. })
     }
 
     fn priority(&self) -> u8 {

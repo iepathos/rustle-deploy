@@ -2,19 +2,23 @@ use crate::compilation::output::error::OutputError;
 use crate::compilation::output::strategies::{
     CacheOutputStrategy, CopyResult, InMemoryOutputStrategy, OutputStrategy, ProjectOutputStrategy,
 };
-use crate::compilation::{CompilationCache, compiler::CompiledBinary};
+use crate::compilation::CompilationCache;
+use crate::types::compilation::CompiledBinary;
 use std::path::{Path, PathBuf};
 use tracing::{debug, info};
 
 pub struct BinaryOutputManager {
     #[allow(dead_code)]
     cache: CompilationCache,
-    output_strategies: Vec<Box<dyn OutputStrategy>>,
+    output_strategies:
+        Vec<Box<dyn OutputStrategy<Error = crate::compilation::output::error::OutputError>>>,
 }
 
 impl BinaryOutputManager {
     pub fn new(cache: CompilationCache) -> Self {
-        let strategies: Vec<Box<dyn OutputStrategy>> = vec![
+        let strategies: Vec<
+            Box<dyn OutputStrategy<Error = crate::compilation::output::error::OutputError>>,
+        > = vec![
             Box::new(CacheOutputStrategy::new()),
             Box::new(ProjectOutputStrategy::new()),
             Box::new(InMemoryOutputStrategy::new()),

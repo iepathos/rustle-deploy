@@ -24,46 +24,50 @@ impl BinaryOptimizer {
         optimizer
     }
 
-    pub fn optimize_compilation_options(
+    pub fn optimize_target_specification(
         &self,
-        options: &mut CompilationOptions,
-        target_triple: &str,
+        target_spec: &mut TargetSpecification,
     ) -> Result<()> {
         let strategy = self
             .optimization_strategies
-            .get(&options.optimization_level)
+            .get(&target_spec.optimization_level)
             .ok_or_else(|| {
                 DeployError::Configuration(format!(
                     "No optimization strategy for level: {:?}",
-                    options.optimization_level
+                    target_spec.optimization_level
                 ))
             })?;
 
         // Apply target-specific optimizations
-        if let Some(target_flags) = strategy.target_specific_flags.get(target_triple) {
-            options.custom_features.extend(target_flags.clone());
+        if let Some(target_flags) = strategy
+            .target_specific_flags
+            .get(&target_spec.target_triple)
+        {
+            target_spec
+                .compilation_options
+                .custom_features
+                .extend(target_flags.clone());
         }
 
         // Add architecture-specific optimizations
-        self.apply_architecture_optimizations(options, target_triple)?;
+        self.apply_architecture_optimizations(
+            &mut target_spec.compilation_options,
+            &target_spec.target_triple,
+        )?;
 
         // Apply size optimizations if requested
-        if matches!(options.optimization_level, OptimizationLevel::MinSize) {
-            self.apply_size_optimizations(options)?;
+        if matches!(target_spec.optimization_level, OptimizationLevel::MinSize) {
+            self.apply_size_optimizations(&mut target_spec.compilation_options)?;
         }
 
         Ok(())
     }
 
-    pub fn generate_rust_flags(
-        &self,
-        options: &CompilationOptions,
-        target_triple: &str,
-    ) -> Vec<String> {
+    pub fn generate_rust_flags_for_target(&self, target_spec: &TargetSpecification) -> Vec<String> {
         let mut flags = Vec::new();
 
         // Base optimization flags
-        match options.optimization_level {
+        match target_spec.optimization_level {
             OptimizationLevel::Debug => {
                 flags.push("-C opt-level=0".to_string());
                 flags.push("-C debuginfo=2".to_string());
@@ -85,41 +89,47 @@ impl BinaryOptimizer {
         }
 
         // Target CPU optimization
-        if let Some(target_cpu) = &options.target_cpu {
+        if let Some(target_cpu) = &target_spec.compilation_options.target_cpu {
             flags.push(format!("-C target-cpu={target_cpu}"));
         } else {
             // Auto-detect optimal target CPU for the architecture
-            if let Some(optimal_cpu) = self.get_optimal_target_cpu(target_triple) {
+            if let Some(optimal_cpu) = self.get_optimal_target_cpu(&target_spec.target_triple) {
                 flags.push(format!("-C target-cpu={optimal_cpu}"));
             }
         }
 
         // Static linking
-        if options.static_linking {
+        if target_spec.compilation_options.static_linking {
             flags.push("-C target-feature=+crt-static".to_string());
         }
 
         // Symbol stripping
-        if options.strip_symbols {
+        if target_spec.compilation_options.strip_debug {
             flags.push("-C strip=symbols".to_string());
         }
 
         // Link-time optimization
-        if matches!(
-            options.optimization_level,
-            OptimizationLevel::Release | OptimizationLevel::MinSize
-        ) {
+        if target_spec.compilation_options.enable_lto
+            || matches!(
+                target_spec.optimization_level,
+                OptimizationLevel::Release | OptimizationLevel::MinSize
+            )
+        {
             flags.push("-C lto=fat".to_string());
         }
 
         // Target-specific flags
-        flags.extend(self.get_target_specific_flags(target_triple));
+        flags.extend(self.get_target_specific_flags(&target_spec.target_triple));
 
         flags
     }
 
-    pub fn estimate_binary_size(&self, options: &CompilationOptions, embedded_size: u64) -> u64 {
-        let base_size = match options.optimization_level {
+    pub fn estimate_binary_size_for_target(
+        &self,
+        target_spec: &TargetSpecification,
+        embedded_size: u64,
+    ) -> u64 {
+        let base_size = match target_spec.optimization_level {
             OptimizationLevel::Debug => 15_000_000, // ~15MB base for debug
             OptimizationLevel::Release => 8_000_000, // ~8MB base for release
             OptimizationLevel::ReleaseWithDebugInfo => 12_000_000, // ~12MB with debug info
@@ -129,22 +139,23 @@ impl BinaryOptimizer {
         let mut estimated_size = base_size + embedded_size;
 
         // Adjust for static linking
-        if options.static_linking {
+        if target_spec.compilation_options.static_linking {
             estimated_size += 2_000_000; // Additional ~2MB for static linking
         }
 
         // Adjust for compression
-        if options.compression {
+        if target_spec.compilation_options.compression {
             estimated_size = (estimated_size as f64 * 0.3) as u64; // ~70% compression
         }
 
         estimated_size
     }
 
-    pub fn suggest_optimizations(
+    pub fn suggest_optimization_target(
         &self,
         requirements: &OptimizationRequirements,
-    ) -> CompilationOptions {
+        target_triple: &str,
+    ) -> TargetSpecification {
         let optimization_level = if requirements.minimize_size {
             OptimizationLevel::MinSize
         } else if requirements.debug_info_needed {
@@ -153,13 +164,28 @@ impl BinaryOptimizer {
             OptimizationLevel::Release
         };
 
-        CompilationOptions {
+        let enable_lto = matches!(
             optimization_level,
-            strip_symbols: !requirements.debug_info_needed,
-            static_linking: requirements.static_linking_preferred,
-            compression: requirements.minimize_transfer_size,
-            custom_features: requirements.required_features.clone(),
-            target_cpu: requirements.target_cpu.clone(),
+            OptimizationLevel::Release | OptimizationLevel::MinSize
+        );
+
+        TargetSpecification {
+            target_triple: target_triple.to_string(),
+            optimization_level,
+            platform_info: crate::types::compilation::PlatformInfo {
+                architecture: "x86_64".to_string(), // Should be detected from target_triple
+                os_family: "unix".to_string(),
+                libc: Some("gnu".to_string()),
+                features: Vec::new(),
+            },
+            compilation_options: CompilationOptions {
+                strip_debug: !requirements.debug_info_needed,
+                enable_lto,
+                static_linking: requirements.static_linking_preferred,
+                compression: requirements.minimize_transfer_size,
+                custom_features: requirements.required_features.clone(),
+                target_cpu: requirements.target_cpu.clone(),
+            },
         }
     }
 
@@ -245,7 +271,8 @@ impl BinaryOptimizer {
 
     fn apply_size_optimizations(&self, options: &mut CompilationOptions) -> Result<()> {
         // Enable aggressive size optimizations
-        options.strip_symbols = true;
+        options.strip_debug = true;
+        options.enable_lto = true;
         options.static_linking = true;
         options.compression = true;
 

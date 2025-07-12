@@ -89,7 +89,7 @@ fn test_verbose_with_other_flags() {
 fn test_deploy_options_conversion() {
     let args = vec!["test-cli", "-vv", "--dry-run", "--force-binary"];
     let cli = TestCli::try_parse_from(args).unwrap();
-    
+
     let deploy_options = TestDeployOptions::from(&cli);
     assert_eq!(deploy_options.verbosity, 2);
     assert!(deploy_options.dry_run);
@@ -106,10 +106,10 @@ fn test_verbosity_levels() {
             force_binary: false,
             force_ssh: false,
         };
-        
+
         // All verbosity levels should be valid u8 values
         assert!(deploy_options.verbosity <= 255);
-        
+
         // Test logical verbosity behavior
         match verbosity {
             0 => assert_eq!(deploy_options.verbosity, 0), // Silent
@@ -131,7 +131,7 @@ fn test_mutually_exclusive_force_options() {
         force_binary: true,
         force_ssh: true,
     };
-    
+
     // This represents an invalid state that should be handled by application logic
     assert!(deploy_options.force_binary && deploy_options.force_ssh);
     // In practice, application should validate this and choose one or error
@@ -140,10 +140,10 @@ fn test_mutually_exclusive_force_options() {
 #[tokio::test]
 async fn test_verbose_output_simulation() {
     // Simulate verbose output behavior based on verbosity level
-    
+
     fn get_log_messages(verbosity: u8) -> Vec<String> {
         let mut messages = Vec::new();
-        
+
         if verbosity >= 1 {
             messages.push("INFO: Operation started".to_string());
         }
@@ -153,23 +153,23 @@ async fn test_verbose_output_simulation() {
         if verbosity >= 3 {
             messages.push("TRACE: Very detailed operation trace".to_string());
         }
-        
+
         messages
     }
-    
+
     // Test different verbosity levels
     let level_0_logs = get_log_messages(0);
     assert!(level_0_logs.is_empty());
-    
+
     let level_1_logs = get_log_messages(1);
     assert_eq!(level_1_logs.len(), 1);
     assert!(level_1_logs[0].contains("INFO"));
-    
+
     let level_2_logs = get_log_messages(2);
     assert_eq!(level_2_logs.len(), 2);
     assert!(level_2_logs[0].contains("INFO"));
     assert!(level_2_logs[1].contains("DEBUG"));
-    
+
     let level_3_logs = get_log_messages(3);
     assert_eq!(level_3_logs.len(), 3);
     assert!(level_3_logs[0].contains("INFO"));
@@ -182,7 +182,7 @@ fn test_cli_help_contains_verbose() {
     // Test that CLI help includes verbose information
     let help_output = TestCli::try_parse_from(vec!["test-cli", "--help"]);
     assert!(help_output.is_err()); // --help causes clap to exit with usage info
-    
+
     // We can verify the CLI structure has verbosity field
     let default_cli = TestCli {
         verbosity: 0,
@@ -190,21 +190,21 @@ fn test_cli_help_contains_verbose() {
         force_binary: false,
         force_ssh: false,
     };
-    
+
     assert_eq!(default_cli.verbosity, 0);
 }
 
 #[test]
 fn test_verbose_scenarios() {
     // Test various realistic CLI scenarios
-    
+
     struct TestScenario {
         name: &'static str,
         args: Vec<&'static str>,
         expected_verbosity: u8,
         expected_dry_run: bool,
     }
-    
+
     let scenarios = vec![
         TestScenario {
             name: "Silent execution",
@@ -231,12 +231,18 @@ fn test_verbose_scenarios() {
             expected_dry_run: false,
         },
     ];
-    
+
     for scenario in scenarios {
         let cli = TestCli::try_parse_from(scenario.args).unwrap();
-        assert_eq!(cli.verbosity, scenario.expected_verbosity, 
-                   "Failed scenario: {}", scenario.name);
-        assert_eq!(cli.dry_run, scenario.expected_dry_run, 
-                   "Failed scenario: {}", scenario.name);
+        assert_eq!(
+            cli.verbosity, scenario.expected_verbosity,
+            "Failed scenario: {}",
+            scenario.name
+        );
+        assert_eq!(
+            cli.dry_run, scenario.expected_dry_run,
+            "Failed scenario: {}",
+            scenario.name
+        );
     }
 }

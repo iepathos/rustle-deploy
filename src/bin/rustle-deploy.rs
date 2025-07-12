@@ -1,8 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use rustle_deploy::compilation::{
-    TargetDetector,
-    zigbuild::OptimizationLevel as CompilationOptimizationLevel,
+    zigbuild::OptimizationLevel as CompilationOptimizationLevel, TargetDetector,
 };
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
@@ -459,7 +458,7 @@ async fn run_compilation(
     // Currently disabled due to architectural issues between different OptimizationLevel and TargetSpecification types
     // let mut compiler = BinaryCompiler::new(compiler_config);
     // let compiled_binary = compiler.compile_binary(&template, &target_spec).await?;
-    
+
     info!("✅ Template generated successfully (compilation temporarily disabled):");
     info!("   Target: {}", target_spec.triple);
     info!("   Template files: {}", template.source_files.len());
@@ -470,7 +469,7 @@ async fn run_compilation(
     // let output_path = cli.output_dir.join("rustle-runner");
     // let binary_manager = BinaryOutputManager::new(...);
     // let copy_result = binary_manager.copy_to_output(&compiled_binary, &output_path).await?;
-    
+
     info!("Output would be written to: {}", cli.output_dir.display());
 
     // TODO: Make the binary executable and test execution
@@ -482,7 +481,7 @@ async fn run_compilation(
     //     perms.set_mode(0o755); // rwxr-xr-x
     //     std::fs::set_permissions(&copy_result.output_path, perms)?;
     // }
-    
+
     // if cli.localhost_test {
     //     info!("Testing binary execution on localhost");
     //     test_binary_execution(&copy_result.output_path).await?;
@@ -497,7 +496,9 @@ async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput>
     Ok(rustle_plan)
 }
 
-fn create_target_info_from_spec(target_spec: &rustle_deploy::compilation::TargetSpecification) -> Result<TargetInfo> {
+fn create_target_info_from_spec(
+    target_spec: &rustle_deploy::compilation::TargetSpecification,
+) -> Result<TargetInfo> {
     let platform = if target_spec.triple.contains("apple-darwin") {
         Platform::MacOS
     } else if target_spec.triple.contains("linux") {
