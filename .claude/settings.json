@@ -1,4 +1,28 @@
 {
+    "hooks": {
+      "PostToolUse": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command",
+              "command": ".claude/hooks/notification tool_call_end"
+            }
+          ]
+        }
+      ],
+      "PreToolUse": [
+        {
+          "matcher": "",
+          "hooks": [
+            {
+              "type": "command", 
+              "command": ".claude/hooks/notification tool_call_start"
+            }
+          ]
+        }
+      ]
+    },
     "permissions": {
       "allow": [
         "Bash(cargo build:*)",
