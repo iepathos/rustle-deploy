@@ -327,7 +327,7 @@ impl LocalExecutor {
         };
 
         let end_utc = Utc::now();
-        
+
         // Verbose logging for module results
         if self.config.verbose {
             tracing::info!(
