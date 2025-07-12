@@ -516,7 +516,7 @@ impl ProcessExecutor {
             .args(["--show-sdk-path"])
             .output()
             .map_err(|e| {
-                CompilationError::ProcessExecution(format!("Failed to get SDK path: {}", e))
+                CompilationError::ProcessExecution(format!("Failed to get SDK path: {e}"))
             })?;
 
         if !sdk_path.status.success() {
@@ -533,29 +533,29 @@ impl ProcessExecutor {
         cmd.env("MACOSX_DEPLOYMENT_TARGET", "11.0");
 
         // Set framework search paths
-        let frameworks_path = format!("{}/System/Library/Frameworks", sdk_path_str);
+        let frameworks_path = format!("{sdk_path_str}/System/Library/Frameworks");
         cmd.env("FRAMEWORK_SEARCH_PATHS", &frameworks_path);
 
         // Set library search paths
-        let lib_path = format!("{}/usr/lib", sdk_path_str);
+        let lib_path = format!("{sdk_path_str}/usr/lib");
         cmd.env("LIBRARY_PATH", &lib_path);
 
         // Set header search paths
-        let include_path = format!("{}/usr/include", sdk_path_str);
+        let include_path = format!("{sdk_path_str}/usr/include");
         cmd.env("CPATH", &include_path);
 
         // Set Zig-specific environment variables
         cmd.env("ZIG_SYSTEM_LINKER_HACK", "1");
 
         // Set additional linker flags for macOS frameworks
-        let framework_flags = format!("-L framework={} -F {}", frameworks_path, frameworks_path);
+        let framework_flags = format!("-L framework={frameworks_path} -F {frameworks_path}");
 
         // Get existing RUSTFLAGS and append framework flags
         let existing_rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
         let combined_rustflags = if existing_rustflags.is_empty() {
             framework_flags
         } else {
-            format!("{} {}", existing_rustflags, framework_flags)
+            format!("{existing_rustflags} {framework_flags}")
         };
         cmd.env("RUSTFLAGS", combined_rustflags);
 
@@ -631,7 +631,7 @@ impl ProcessExecutor {
         let combined_flags = if existing_flags.is_empty() {
             new_flags.to_string()
         } else {
-            format!("{} {}", existing_flags, new_flags)
+            format!("{existing_flags} {new_flags}")
         };
         cmd.env("RUSTFLAGS", combined_flags);
     }
