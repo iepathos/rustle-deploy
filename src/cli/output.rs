@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 /// Print capability report in human-readable format
 pub fn print_capability_report(report: &CapabilityReport) {
-    println!("🔧 Zero-Infrastructure Cross-Compilation Capabilities");
+    println!("🔧 Cross-Compilation Capabilities");
     println!("================================================");
     println!();
 

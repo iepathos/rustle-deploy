@@ -12,7 +12,7 @@ use tracing::{error, info, warn};
 
 #[derive(Parser)]
 #[command(name = "rustle-deploy")]
-#[command(about = "Zero-infrastructure Ansible replacement with binary deployment optimization")]
+#[command(about = "Ansible replacement with binary deployment optimization")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct RustleDeployCli {
     /// Execution plan JSON file from rustle-plan (or stdin if -)
@@ -104,7 +104,7 @@ async fn main() -> Result<()> {
 }
 
 async fn check_capabilities() -> Result<()> {
-    println!("🔧 Zero-Infrastructure Cross-Compilation Capabilities");
+    println!("🔧 Cross-Compilation Capabilities");
     println!("===================================================");
 
     // Basic capability detection without complex types
@@ -199,7 +199,7 @@ async fn check_capabilities() -> Result<()> {
 }
 
 async fn run_setup() -> Result<()> {
-    println!("🚀 rustle-deploy Zero-Infrastructure Setup");
+    println!("🚀 rustle-deploy Setup");
     println!("==========================================");
 
     println!("📋 Checking current setup...");
@@ -243,7 +243,7 @@ async fn run_setup() -> Result<()> {
 }
 
 async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> Result<()> {
-    println!("🚀 rustle-deploy: Zero-Infrastructure Deployment");
+    println!("🚀 rustle-deploy: Deployment");
     println!("==============================================");
 
     // Parse execution plan from rustle-plan JSON
@@ -617,7 +617,7 @@ async fn test_binary_execution(binary_path: &PathBuf) -> Result<()> {
 }
 
 fn show_usage() {
-    println!("rustle-deploy: Zero-infrastructure binary compiler and deployment manager");
+    println!("rustle-deploy: Binary compiler and deployment manager");
     println!();
     println!("Usage:");
     println!("  rustle-deploy <execution-plan.json>                # Compile and deploy");

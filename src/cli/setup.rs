@@ -16,7 +16,7 @@ impl SetupWizard {
 
     /// Run interactive setup process
     pub async fn run_interactive_setup(&mut self) -> Result<()> {
-        println!("🚀 Welcome to rustle-deploy Zero-Infrastructure Setup");
+        println!("🚀 Welcome to rustle-deploy Setup");
         println!("===================================================");
         println!();
 
@@ -32,7 +32,7 @@ impl SetupWizard {
         let recommendations = self.detector.recommend_setup_improvements(&capabilities);
         
         if recommendations.is_empty() {
-            println!("✅ Your setup is fully optimized for zero-infrastructure deployment!");
+            println!("✅ Your setup is fully optimized for deployment!");
             return Ok(());
         }
 
@@ -58,13 +58,13 @@ impl SetupWizard {
 
     /// Validate current setup and provide guidance
     pub async fn validate_setup(&mut self) -> Result<()> {
-        info!("Validating zero-infrastructure setup");
+        info!("Validating setup");
 
         let validation_result = self.detector.validate_toolchain().await?;
         
         match validation_result.overall_health {
             crate::compilation::toolchain::HealthStatus::Excellent => {
-                println!("✅ Excellent! Your setup is fully optimized for zero-infrastructure deployment.");
+                println!("✅ Excellent! Your setup is fully optimized for deployment.");
             }
             crate::compilation::toolchain::HealthStatus::Good => {
                 println!("👍 Good setup! You have most cross-compilation features available.");
@@ -160,8 +160,8 @@ impl SetupWizard {
     }
 
     fn generate_default_config(&self) -> String {
-        r#"# rustle-deploy Zero-Infrastructure Configuration
-# This file contains optimized settings for zero-infrastructure cross-compilation
+        r#"# rustle-deploy Configuration
+# This file contains optimized settings for cross-compilation
 
 [compilation]
 # Capability detection
