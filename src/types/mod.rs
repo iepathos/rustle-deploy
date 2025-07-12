@@ -6,4 +6,4 @@ pub mod platform;
 pub use compilation::*;
 pub use deployment::*;
 pub use inventory::*;
-pub use platform::*;
+// Note: platform::* not re-exported to avoid Platform name conflict with compilation::Platform

@@ -1,10 +1,11 @@
 use crate::compilation::cache::CompilationCache;
 use crate::compilation::capabilities::{CompilationCapabilities, CompilationStrategy};
 use crate::compilation::optimizer::{DeploymentOptimizer, DeploymentPlan};
-use crate::compilation::toolchain::TargetSpecification;
-use crate::compilation::zigbuild::{CompiledBinary, OptimizationLevel, ZigBuildCompiler};
+use crate::compilation::zigbuild::{CompiledBinary, ZigBuildCompiler};
 use crate::deploy::{DeployError, Result};
 use crate::template::GeneratedTemplate;
+use crate::types::compilation::OptimizationLevel;
+use crate::types::compilation::TargetSpecification;
 use crate::ParsedInventory;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -156,7 +157,7 @@ impl ZeroInfraCompiler {
                 .as_ref()
                 .ok_or_else(|| CompilationError {
                     message: "ZigBuild compiler not available".to_string(),
-                    target: Some(target.triple.clone()),
+                    target: Some(target.target_triple.clone()),
                     recoverable: false,
                 })?;
 
@@ -321,14 +322,13 @@ impl ZeroInfraCompiler {
         target_triple: &str,
         hosts: &[String],
     ) -> Result<BinaryDeployment> {
-        let target_spec = TargetSpecification {
-            triple: target_triple.to_string(),
-            platform: crate::compilation::toolchain::Platform::Linux, // Simplified
-            architecture: crate::compilation::toolchain::Architecture::X86_64, // Simplified
-            requires_zig: self.capabilities.get_strategy_for_target(target_triple)
-                == CompilationStrategy::ZigBuild,
-            compilation_strategy: self.capabilities.get_strategy_for_target(target_triple),
-        };
+        let mut target_spec = TargetSpecification::new(target_triple);
+        target_spec.requires_zig = self.capabilities.get_strategy_for_target(target_triple)
+            == CompilationStrategy::ZigBuild;
+        target_spec.compilation_strategy = self
+            .capabilities
+            .get_strategy_for_target(target_triple)
+            .into();
 
         let binary = self.compile_with_zigbuild(template, &target_spec).await?;
 

@@ -11,8 +11,7 @@ use tokio::io::AsyncReadExt;
 use super::FileError;
 
 /// Supported checksum algorithms
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum ChecksumAlgorithm {
     Md5,
     Sha1,
@@ -32,7 +31,6 @@ impl std::str::FromStr for ChecksumAlgorithm {
         }
     }
 }
-
 
 /// Calculate file checksum using specified algorithm
 pub async fn calculate_file_checksum(

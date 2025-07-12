@@ -81,8 +81,7 @@ impl CompilationCache {
                         size: entry.size_bytes,
                         checksum: entry.checksum.clone(),
                         compilation_time: std::time::Duration::from_secs(0), // Cached, so no compilation time
-                        optimization_level:
-                            crate::compilation::compiler::OptimizationLevel::Release, // Default for cached
+                        optimization_level: crate::types::compilation::OptimizationLevel::Release, // Default for cached
                         template_hash: entry.template_hash.clone(),
                         created_at: chrono::DateTime::from(entry.created_at),
                     });

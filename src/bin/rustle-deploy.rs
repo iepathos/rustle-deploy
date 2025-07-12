@@ -1,10 +1,11 @@
 use anyhow::Result;
 use clap::Parser;
+use rustle_deploy::compilation::compiler::{BinaryCompiler, CompilerConfig};
 use rustle_deploy::compilation::TargetDetector;
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
-use rustle_deploy::types::compilation::OptimizationLevel;
-use rustle_deploy::types::Platform;
+use rustle_deploy::types::compilation::{OptimizationLevel, TargetSpecification};
+use rustle_deploy::types::platform::Platform;
 use std::path::PathBuf;
 use tracing::{error, info, warn};
 
@@ -453,19 +454,35 @@ async fn run_compilation(
     );
     info!("Template hash: {}", template.calculate_hash());
 
-    // TODO: Implement compilation
-    // Currently disabled due to architectural issues between different OptimizationLevel and TargetSpecification types
-    // let mut compiler = BinaryCompiler::new(compiler_config);
-    // let compiled_binary = compiler.compile_binary(&template, &target_spec).await?;
+    // Binary compilation is now enabled with unified types
+    if cli.compile_only {
+        info!("Starting binary compilation");
 
-    info!("✅ Template generated successfully (compilation temporarily disabled):");
-    info!("   Target: {}", target_spec.target_triple);
-    info!("   Template files: {}", template.source_files.len());
+        let compiler_config = CompilerConfig::default();
+        let mut compiler = BinaryCompiler::new(compiler_config);
+        let compiled_binary = compiler.compile_binary(&template, &target_spec).await?;
 
-    // TODO: Implement binary output management
-    // Currently disabled until compilation is working
-    // tokio::fs::create_dir_all(&cli.output_dir).await?;
-    // let output_path = cli.output_dir.join("rustle-runner");
+        info!("✅ Binary compiled successfully:");
+        info!("   Target: {}", compiled_binary.target_triple);
+        info!("   Size: {} bytes", compiled_binary.size);
+        info!(
+            "   Compilation time: {:?}",
+            compiled_binary.compilation_time
+        );
+        info!("   Binary ID: {}", compiled_binary.binary_id);
+    } else {
+        info!("✅ Template generated successfully:");
+        info!("   Target: {}", target_spec.target_triple);
+        info!("   Template files: {}", template.source_files.len());
+    }
+
+    // Binary output management
+    if cli.compile_only {
+        tokio::fs::create_dir_all(&cli.output_dir).await?;
+        let output_path = cli.output_dir.join("rustle-runner");
+        // Binary is already compiled above and saved to the compilation cache
+        info!("Binary compilation completed. Check the compilation cache for the binary.");
+    }
     // let binary_manager = BinaryOutputManager::new(...);
     // let copy_result = binary_manager.copy_to_output(&compiled_binary, &output_path).await?;
 
@@ -495,9 +512,7 @@ async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput>
     Ok(rustle_plan)
 }
 
-fn create_target_info_from_spec(
-    target_spec: &rustle_deploy::compilation::TargetSpecification,
-) -> Result<TargetInfo> {
+fn create_target_info_from_spec(target_spec: &TargetSpecification) -> Result<TargetInfo> {
     let platform = if target_spec.target_triple.contains("apple-darwin") {
         Platform::MacOS
     } else if target_spec.target_triple.contains("linux") {

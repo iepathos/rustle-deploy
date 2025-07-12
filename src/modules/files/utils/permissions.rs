@@ -64,8 +64,7 @@ fn parse_symbolic_mode(mode: &str) -> Result<u32, FileError> {
             continue;
         }
 
-        let (who, op_and_perms) = if let Some(pos) = part.find(['+', '-', '='])
-        {
+        let (who, op_and_perms) = if let Some(pos) = part.find(['+', '-', '=']) {
             (&part[..pos], &part[pos..])
         } else {
             return Err(FileError::InvalidPermissions {

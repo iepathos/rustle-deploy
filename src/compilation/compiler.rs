@@ -1,4 +1,5 @@
 use crate::template::GeneratedTemplate;
+use crate::types::compilation::{OptimizationLevel, TargetSpecification};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -131,23 +132,9 @@ pub enum BinarySource {
     InMemory,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TargetSpecification {
-    pub target_triple: String,
-    pub optimization_level: OptimizationLevel,
-    pub strip_debug: bool,
-    pub enable_lto: bool,
-    pub target_cpu: Option<String>,
-    pub features: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OptimizationLevel {
-    Debug,
-    Release,
-    ReleaseWithDebugInfo,
-    MinimalSize,
-}
+// TargetSpecification and OptimizationLevel moved to crate::types::compilation
+// Use: use crate::types::compilation::{TargetSpecification, OptimizationLevel};
+// Note: MinimalSize variant is now OptimizationLevel::MinimalSize
 
 #[derive(Debug, Clone)]
 pub struct ProjectManager {
@@ -610,7 +597,7 @@ impl ProcessExecutor {
             OptimizationLevel::Release => {
                 cmd.arg("--release");
             }
-            OptimizationLevel::MinimalSize => {
+            OptimizationLevel::MinimalSize | OptimizationLevel::MinSize => {
                 cmd.arg("--release");
                 self.append_rustflags(cmd, "-C opt-level=z -C lto=fat -C strip=symbols");
             }

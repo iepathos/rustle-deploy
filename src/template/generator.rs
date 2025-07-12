@@ -1,7 +1,8 @@
 use crate::execution::plan::ModuleSpec;
 use crate::execution::rustle_plan::{BinaryDeploymentPlan, RustlePlanOutput};
+use crate::types::compilation::OptimizationLevel;
 use crate::types::deployment::RuntimeConfig;
-use crate::types::Platform;
+use crate::types::platform::Platform;
 use anyhow::Result;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
@@ -54,12 +55,9 @@ pub struct TemplateConfig {
     pub encrypt_secrets: bool,
 }
 
-#[derive(Debug, Clone)]
-pub enum OptimizationLevel {
-    Debug,
-    Release,
-    Aggressive,
-}
+// OptimizationLevel moved to crate::types::compilation
+// Use: use crate::types::compilation::OptimizationLevel;
+// Note: Aggressive variant is now OptimizationLevel::Aggressive
 
 #[derive(Debug, Clone)]
 pub enum CompressionType {
@@ -282,6 +280,7 @@ impl BinaryTemplateGenerator {
                 OptimizationLevel::Debug => "0",
                 OptimizationLevel::Release => "3",
                 OptimizationLevel::Aggressive => "3",
+                _ => "3", // Default to release level for other variants
             },
             "lto": matches!(self.config.optimization_level, OptimizationLevel::Release | OptimizationLevel::Aggressive),
             "strip": !self.config.include_debug_info,
@@ -391,6 +390,18 @@ impl BinaryTemplateGenerator {
                     .await?;
                 self.optimizer
                     .optimize_for_speed(&mut optimized_template)
+                    .await?;
+            }
+            OptimizationLevel::ReleaseWithDebugInfo => {
+                self.optimizer
+                    .optimize_for_size(&mut optimized_template)
+                    .await?;
+            }
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => {
+                self.optimizer
+                    .optimize_for_size(&mut optimized_template)
                     .await?;
             }
         }
@@ -602,34 +613,7 @@ pub async fn execute(args: HashMap<String, Value>) -> Result<Value> {{
     }
 }
 
-// Implement serde for OptimizationLevel
-impl Serialize for OptimizationLevel {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            OptimizationLevel::Debug => serializer.serialize_str("debug"),
-            OptimizationLevel::Release => serializer.serialize_str("release"),
-            OptimizationLevel::Aggressive => serializer.serialize_str("aggressive"),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for OptimizationLevel {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<OptimizationLevel, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match s.as_str() {
-            "debug" => Ok(OptimizationLevel::Debug),
-            "release" => Ok(OptimizationLevel::Release),
-            "aggressive" => Ok(OptimizationLevel::Aggressive),
-            _ => Err(serde::de::Error::custom("invalid optimization level")),
-        }
-    }
-}
+// OptimizationLevel serialization is handled by the derive macro in types::compilation
 
 impl GeneratedTemplate {
     /// Calculate a hash of the template for caching and comparison

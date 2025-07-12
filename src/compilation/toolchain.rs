@@ -1,5 +1,6 @@
 use crate::compilation::capabilities::{CompilationCapabilities, SetupRecommendation};
 use crate::deploy::{DeployError, Result};
+use crate::types::compilation::TargetSpecification;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
 
@@ -128,9 +129,7 @@ impl ToolchainDetector {
             .args(["install", "cargo-zigbuild"])
             .output()
             .await
-            .map_err(|e| {
-                DeployError::Configuration(format!("Failed to run cargo install: {e}"))
-            })?;
+            .map_err(|e| DeployError::Configuration(format!("Failed to run cargo install: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -157,13 +156,10 @@ impl ToolchainDetector {
                 crate::compilation::capabilities::CompilationStrategy::ZigBuild
             );
 
-            targets.push(TargetSpecification {
-                triple: target_triple.clone(),
-                platform: Platform::from_target_triple(target_triple),
-                architecture: Architecture::from_target_triple(target_triple),
-                requires_zig,
-                compilation_strategy: strategy,
-            });
+            let mut target_spec = TargetSpecification::new(target_triple.clone());
+            target_spec.requires_zig = requires_zig;
+            target_spec.compilation_strategy = strategy.into();
+            targets.push(target_spec);
         }
 
         targets
@@ -247,31 +243,8 @@ impl ToolchainDetector {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TargetSpecification {
-    pub triple: String,
-    pub platform: Platform,
-    pub architecture: Architecture,
-    pub requires_zig: bool,
-    pub compilation_strategy: crate::compilation::capabilities::CompilationStrategy,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Platform {
-    Linux,
-    MacOS,
-    Windows,
-    Unknown,
-}
-
-#[derive(Debug, Clone)]
-pub enum Architecture {
-    X86_64,
-    Aarch64,
-    X86,
-    Arm,
-    Unknown,
-}
+// TargetSpecification, Platform, and Architecture moved to crate::types::compilation
+// Use: use crate::types::compilation::{TargetSpecification, Platform, Architecture};
 
 #[derive(Debug, Clone)]
 pub struct ToolchainStatus {
@@ -290,32 +263,23 @@ pub enum HealthStatus {
     Poor,      // Missing essential components
 }
 
-impl Platform {
-    fn from_target_triple(triple: &str) -> Self {
-        if triple.contains("linux") {
-            Platform::Linux
-        } else if triple.contains("darwin") || triple.contains("apple") {
-            Platform::MacOS
-        } else if triple.contains("windows") || triple.contains("pc-windows") {
-            Platform::Windows
-        } else {
-            Platform::Unknown
-        }
-    }
-}
+// Platform and Architecture implementations moved to crate::types::compilation
 
-impl Architecture {
-    fn from_target_triple(triple: &str) -> Self {
-        if triple.starts_with("x86_64") {
-            Architecture::X86_64
-        } else if triple.starts_with("aarch64") {
-            Architecture::Aarch64
-        } else if triple.starts_with("i686") || triple.starts_with("i586") {
-            Architecture::X86
-        } else if triple.starts_with("arm") {
-            Architecture::Arm
-        } else {
-            Architecture::Unknown
+// Add conversion between CompilationStrategy types
+use crate::types::compilation::CompilationStrategy as UnifiedCompilationStrategy;
+
+impl From<crate::compilation::capabilities::CompilationStrategy> for UnifiedCompilationStrategy {
+    fn from(strategy: crate::compilation::capabilities::CompilationStrategy) -> Self {
+        match strategy {
+            crate::compilation::capabilities::CompilationStrategy::NativeCargo => {
+                UnifiedCompilationStrategy::Native
+            }
+            crate::compilation::capabilities::CompilationStrategy::ZigBuild => {
+                UnifiedCompilationStrategy::ZigBuild
+            }
+            crate::compilation::capabilities::CompilationStrategy::SshFallback => {
+                UnifiedCompilationStrategy::Emulation
+            }
         }
     }
 }

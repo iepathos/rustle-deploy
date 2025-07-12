@@ -162,8 +162,8 @@ impl ExecutionModule for TemplateModule {
         args: &ModuleArgs,
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
-        let template_args = TemplateArgs::from_module_args(args)
-            .map_err(ModuleExecutionError::Validation)?;
+        let template_args =
+            TemplateArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.execute_template_operation(&template_args, context)
             .await
@@ -179,8 +179,8 @@ impl ExecutionModule for TemplateModule {
         args: &ModuleArgs,
         context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
-        let template_args = TemplateArgs::from_module_args(args)
-            .map_err(ModuleExecutionError::Validation)?;
+        let template_args =
+            TemplateArgs::from_module_args(args).map_err(ModuleExecutionError::Validation)?;
 
         self.analyze_template_operation(&template_args, context)
             .await

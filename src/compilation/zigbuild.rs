@@ -1,6 +1,5 @@
-use crate::compilation::capabilities::CompilationStrategy;
-use crate::compilation::toolchain::TargetSpecification;
 use crate::deploy::{DeployError, Result};
+use crate::types::compilation::{OptimizationLevel, TargetSpecification};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tokio::process::Command;
@@ -31,13 +30,9 @@ pub struct CompiledBinary {
     pub features: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
-pub enum OptimizationLevel {
-    Debug,
-    Release,
-    ReleaseWithDebugInfo,
-    MinSizeRelease,
-}
+// OptimizationLevel moved to crate::types::compilation
+// Use: use crate::types::compilation::OptimizationLevel;
+// Note: MinSizeRelease variant is now OptimizationLevel::MinSizeRelease
 
 impl std::fmt::Display for ZigCompilationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -90,14 +85,17 @@ impl ZigBuildCompiler {
 
         info!(
             "Starting Zig cross-compilation for target: {}",
-            target.triple
+            target.target_triple
         );
 
         // Validate that we can use zigbuild for this target
-        if !matches!(target.compilation_strategy, CompilationStrategy::ZigBuild) {
+        if !matches!(
+            target.compilation_strategy,
+            crate::types::compilation::CompilationStrategy::ZigBuild
+        ) {
             return Err(DeployError::Configuration(format!(
                 "Target {} is not configured for Zig compilation",
-                target.triple
+                target.target_triple
             )));
         }
 
@@ -106,7 +104,7 @@ impl ZigBuildCompiler {
         cmd.arg("zigbuild")
             .arg("--release") // Always use release for deployment
             .arg("--target")
-            .arg(&target.triple)
+            .arg(&target.target_triple)
             .current_dir(template_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -116,14 +114,16 @@ impl ZigBuildCompiler {
             OptimizationLevel::Debug => {
                 cmd.arg("--profile").arg("dev");
             }
-            OptimizationLevel::Release => {
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => {
                 cmd.arg("--release");
             }
             OptimizationLevel::ReleaseWithDebugInfo => {
                 cmd.arg("--release");
                 cmd.env("RUSTFLAGS", "-C debuginfo=1");
             }
-            OptimizationLevel::MinSizeRelease => {
+            OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinSize
+            | OptimizationLevel::MinimalSize => {
                 cmd.arg("--release");
                 cmd.env("RUSTFLAGS", "-C opt-level=s -C lto=fat");
             }
@@ -135,7 +135,7 @@ impl ZigBuildCompiler {
         }
 
         // Set target directory to our cache
-        let target_dir = self.build_cache_dir.join(&target.triple);
+        let target_dir = self.build_cache_dir.join(&target.target_triple);
         cmd.env("CARGO_TARGET_DIR", &target_dir);
 
         debug!("Executing cargo zigbuild with command: {:?}", cmd);
@@ -149,11 +149,14 @@ impl ZigBuildCompiler {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let exit_code = output.status.code();
 
-            warn!("Zig compilation failed for {}: {}", target.triple, stderr);
+            warn!(
+                "Zig compilation failed for {}: {}",
+                target.target_triple, stderr
+            );
 
             return Err(ZigCompilationError {
                 message: "Compilation failed".to_string(),
-                target: target.triple.clone(),
+                target: target.target_triple.clone(),
                 exit_code,
                 stderr: stderr.to_string(),
             }
@@ -162,7 +165,7 @@ impl ZigBuildCompiler {
 
         // Find the compiled binary
         let binary_path = self
-            .find_compiled_binary(&target_dir, &target.triple)
+            .find_compiled_binary(&target_dir, &target.target_triple)
             .await?;
 
         // Get binary information
@@ -174,13 +177,13 @@ impl ZigBuildCompiler {
 
         info!(
             "Successfully compiled {} binary ({} bytes) in {:?}",
-            target.triple,
+            target.target_triple,
             metadata.len(),
             compilation_time
         );
 
         Ok(CompiledBinary {
-            target_triple: target.triple.clone(),
+            target_triple: target.target_triple.clone(),
             binary_path,
             size_bytes: metadata.len(),
             compilation_time,
@@ -214,9 +217,7 @@ impl ZigBuildCompiler {
             .args(["targets"])
             .output()
             .await
-            .map_err(|e| {
-                DeployError::Configuration(format!("Failed to query Zig targets: {e}"))
-            })?;
+            .map_err(|e| DeployError::Configuration(format!("Failed to query Zig targets: {e}")))?;
 
         if !output.status.success() {
             return Ok(vec![]);

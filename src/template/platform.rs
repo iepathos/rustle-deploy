@@ -1,4 +1,4 @@
-use crate::types::Platform;
+use crate::types::platform::Platform;
 use anyhow::Result;
 use thiserror::Error;
 

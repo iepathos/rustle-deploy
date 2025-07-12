@@ -1,5 +1,4 @@
-use crate::compilation::toolchain::Platform;
-use crate::compilation::{OptimizationLevel, TargetSpecification};
+use crate::types::compilation::{OptimizationLevel, Platform, TargetSpecification};
 use anyhow::Result;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -159,17 +158,8 @@ impl TargetDetector {
             }
         })?;
 
-        let target_spec = TargetSpecification {
-            target_triple: target_triple.to_string(),
-            optimization_level,
-            platform_info: crate::types::compilation::PlatformInfo {
-                architecture: "x86_64".to_string(), // Default, should be detected
-                os_family: "unix".to_string(),
-                libc: Some("gnu".to_string()),
-                features: Vec::new(),
-            },
-            compilation_options: crate::types::compilation::CompilationOptions::default(),
-        };
+        let mut target_spec = TargetSpecification::new(target_triple);
+        target_spec.optimization_level = optimization_level;
 
         Ok(target_spec)
     }

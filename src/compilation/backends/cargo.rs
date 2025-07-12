@@ -124,7 +124,8 @@ impl CargoBackend {
 
         // Find the built binary
         let target_dir = config
-            .target_dir.clone()
+            .target_dir
+            .clone()
             .unwrap_or_else(|| project_path.join("target"));
 
         let binary_path = target_dir

@@ -19,14 +19,12 @@ pub struct ZigBuildBackend {
     zig_available: bool,
 }
 
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ZigBuildConfig {
     pub zig_path: Option<PathBuf>,
     pub verbose: bool,
     pub target_dir: Option<PathBuf>,
 }
-
 
 impl Default for ZigBuildBackend {
     fn default() -> Self {
@@ -149,7 +147,8 @@ impl ZigBuildBackend {
 
         // Find the built binary
         let target_dir = config
-            .target_dir.clone()
+            .target_dir
+            .clone()
             .unwrap_or_else(|| project_path.join("target"));
 
         let binary_path = target_dir

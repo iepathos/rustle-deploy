@@ -423,15 +423,14 @@ impl FileModule {
         }
 
         // Set ownership if specified
-        if (args.owner.is_some() || args.group.is_some())
-            && path.exists() {
-                set_ownership(path, args.owner.as_deref(), args.group.as_deref())
-                    .await
-                    .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to set ownership: {e}"),
-                    })?;
-                changed = true;
-            }
+        if (args.owner.is_some() || args.group.is_some()) && path.exists() {
+            set_ownership(path, args.owner.as_deref(), args.group.as_deref())
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to set ownership: {e}"),
+                })?;
+            changed = true;
+        }
 
         // Add file information to results
         if path.exists() {

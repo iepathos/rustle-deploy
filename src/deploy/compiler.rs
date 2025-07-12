@@ -122,14 +122,16 @@ impl BinaryCompiler {
             OptimizationLevel::Debug => {
                 cmd.arg("--").arg("--debug");
             }
-            OptimizationLevel::Release => {
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => {
                 rustflags.push("-C opt-level=3".to_string());
             }
             OptimizationLevel::ReleaseWithDebugInfo => {
                 rustflags.push("-C opt-level=3".to_string());
                 rustflags.push("-C debuginfo=2".to_string());
             }
-            OptimizationLevel::MinSize => {
+            OptimizationLevel::MinSize
+            | OptimizationLevel::MinSizeRelease
+            | OptimizationLevel::MinimalSize => {
                 rustflags.push("-C opt-level=z".to_string());
                 rustflags.push("-C panic=abort".to_string());
             }
