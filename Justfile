@@ -196,7 +196,7 @@ full-check: clean build test lint doc audit
 # Install development tools
 install-tools:
     rustup component add rustfmt clippy
-    cargo install cargo-watch cargo-tarpaulin cargo-audit cargo-outdated
+    cargo install cargo-watch cargo-tarpaulin cargo-audit cargo-outdated cargo-zigbuild
 
 # Install additional development tools
 install-extras:
