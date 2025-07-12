@@ -636,18 +636,59 @@ impl ProcessExecutor {
             _ => "release",
         };
 
-        let mut binary_path = project_dir
+        let target_dir = project_dir
             .join("target")
             .join(target)
-            .join(profile_dir)
-            .join("rustle-runner");
+            .join(profile_dir);
 
-        // Handle Windows executable extension
+        // First try the expected location
+        let mut expected_binary_path = target_dir.join("rustle-runner");
         if target.contains("windows") {
-            binary_path.set_extension("exe");
+            expected_binary_path.set_extension("exe");
         }
 
-        Ok(binary_path)
+        if expected_binary_path.exists() {
+            return Ok(expected_binary_path);
+        }
+
+        // If not found, look in the deps directory for the actual binary
+        let deps_dir = target_dir.join("deps");
+        if let Ok(entries) = std::fs::read_dir(&deps_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Look for rustle_runner binary (with or without hash)
+                    if file_name.starts_with("rustle_runner") && !file_name.ends_with(".d") && !file_name.contains(".rcgu.") {
+                        // Check if it's an executable (not a library or object file)
+                        if let Ok(metadata) = std::fs::metadata(&path) {
+                            #[cfg(unix)]
+                            {
+                                use std::os::unix::fs::PermissionsExt;
+                                if metadata.permissions().mode() & 0o111 != 0 {
+                                    return Ok(path);
+                                }
+                            }
+                            #[cfg(windows)]
+                            {
+                                if file_name.ends_with(".exe") {
+                                    return Ok(path);
+                                }
+                            }
+                            // On other platforms, assume it's executable if it's not a known non-executable extension
+                            #[cfg(not(any(unix, windows)))]
+                            {
+                                if !file_name.ends_with(".rlib") && !file_name.ends_with(".rmeta") && !file_name.ends_with(".o") {
+                                    return Ok(path);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If still not found, return the expected path for error reporting
+        Ok(expected_binary_path)
     }
 }
 

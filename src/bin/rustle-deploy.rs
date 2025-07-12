@@ -497,6 +497,16 @@ async fn run_compilation(
         "Binary copied successfully: {} bytes in {:?}",
         copy_result.bytes_copied, copy_result.copy_duration
     );
+    
+    // Make the binary executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&copy_result.output_path)?.permissions();
+        perms.set_mode(0o755); // rwxr-xr-x
+        std::fs::set_permissions(&copy_result.output_path, perms)?;
+    }
+    
     info!("Binary saved to: {}", copy_result.output_path.display());
 
     // Test execution if localhost test mode
