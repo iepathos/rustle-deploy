@@ -1,0 +1,8 @@
+[app]
+name = "{{ app_name }}"
+port = {{ port }}
+debug = {{ debug }}
+
+[database]
+host = "{{ db_host | default('localhost') }}"
+port = {{ db_port | default(5432) }}
