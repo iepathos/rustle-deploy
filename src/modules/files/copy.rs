@@ -18,7 +18,7 @@ use super::utils::{
     backup::create_backup,
     checksum::{verify_file_checksum, ChecksumAlgorithm},
     ownership::set_ownership,
-    permissions::set_permissions,
+    permissions::{get_permissions, set_permissions},
 };
 
 /// Copy module arguments
@@ -34,6 +34,7 @@ pub struct CopyArgs {
     pub directory_mode: Option<String>, // Permissions for created directories
     pub validate: Option<String>,       // Command to validate copied file
     pub checksum: Option<String>,       // Expected checksum of source
+    pub preserve: Option<bool>,         // Preserve source file attributes
 }
 
 impl CopyArgs {
@@ -49,6 +50,7 @@ impl CopyArgs {
             directory_mode: None,
             validate: None,
             checksum: None,
+            preserve: None,
         };
 
         // Required src
@@ -114,6 +116,10 @@ impl CopyArgs {
 
         if let Some(checksum) = args.args.get("checksum") {
             copy_args.checksum = checksum.as_str().map(|s| s.to_string());
+        }
+
+        if let Some(preserve) = args.args.get("preserve") {
+            copy_args.preserve = preserve.as_bool();
         }
 
         Ok(copy_args)
@@ -261,10 +267,14 @@ impl CopyModule {
     async fn execute_copy_operation(
         &self,
         args: &CopyArgs,
-        _context: &ExecutionContext,
+        context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
+        // If we're in check mode, delegate to the analyze method
+        if context.check_mode {
+            return self.analyze_copy_operation(args, context).await;
+        }
         let src_path = Path::new(&args.src);
-        let dest_path = Path::new(&args.dest);
+        let original_dest_path = Path::new(&args.dest);
         #[allow(unused_assignments)]
         let mut changed = false;
         let mut results = HashMap::new();
@@ -276,160 +286,61 @@ impl CopyModule {
             });
         }
 
-        // Verify checksum if provided
+        // Handle destination path based on whether it's a directory
+        let dest_path = self.resolve_destination_path(src_path, original_dest_path)?;
+
+        // Verify checksum if provided (only for files)
         if let Some(expected_checksum) = &args.checksum {
-            let is_valid =
-                verify_file_checksum(src_path, expected_checksum, ChecksumAlgorithm::Sha256)
+            if src_path.is_file() {
+                let is_valid =
+                    verify_file_checksum(src_path, expected_checksum, ChecksumAlgorithm::Sha256)
+                        .await
+                        .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                            message: format!("Checksum verification failed: {e}"),
+                        })?;
+
+                if !is_valid {
+                    return Err(ModuleExecutionError::ExecutionFailed {
+                        message: "Source file checksum does not match expected value".to_string(),
+                    });
+                }
+            }
+        }
+
+        // Perform the copy operation based on source type
+        changed = if src_path.is_dir() {
+            self.copy_directory(src_path, &dest_path, args).await?
+        } else {
+            self.copy_file(src_path, &dest_path, args).await?
+        };
+
+        // Run validation command if specified (only for files)
+        if let Some(validate_cmd) = &args.validate {
+            if src_path.is_file() {
+                let cmd = validate_cmd.replace("%s", &dest_path.to_string_lossy());
+                let output = Command::new("sh")
+                    .arg("-c")
+                    .arg(&cmd)
+                    .output()
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("Checksum verification failed: {e}"),
+                        message: format!("Failed to run validation command: {e}"),
                     })?;
 
-            if !is_valid {
-                return Err(ModuleExecutionError::ExecutionFailed {
-                    message: "Source file checksum does not match expected value".to_string(),
-                });
-            }
-        }
-
-        // Check if destination exists and whether we should proceed
-        let dest_exists = dest_path.exists();
-        if dest_exists && !args.force.unwrap_or(false) {
-            // Check if files are different
-            let files_different = self.files_are_different(src_path, dest_path).await?;
-            if !files_different {
-                // Files are the same, no need to copy
-                results.insert(
-                    "src".to_string(),
-                    serde_json::Value::String(args.src.clone()),
-                );
-                results.insert(
-                    "dest".to_string(),
-                    serde_json::Value::String(args.dest.clone()),
-                );
-                results.insert(
-                    "msg".to_string(),
-                    serde_json::Value::String("Files are identical".to_string()),
-                );
-
-                return Ok(ModuleResult {
-                    changed: false,
-                    failed: false,
-                    msg: Some("Files are identical, no copy needed".to_string()),
-                    stdout: None,
-                    stderr: None,
-                    rc: Some(0),
-                    results,
-                    diff: None,
-                    warnings: vec![],
-                    ansible_facts: HashMap::new(),
-                });
-            }
-        }
-
-        // Create backup if requested and destination exists
-        if args.backup.unwrap_or(false) && dest_exists {
-            if let Ok(Some(backup_path)) = create_backup(dest_path, None).await {
-                results.insert(
-                    "backup_file".to_string(),
-                    serde_json::Value::String(backup_path.display().to_string()),
-                );
-            }
-        }
-
-        // Create destination directory if it doesn't exist
-        if let Some(parent_dir) = dest_path.parent() {
-            if !parent_dir.exists() {
-                fs::create_dir_all(parent_dir).await.map_err(|e| {
-                    ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to create destination directory: {e}"),
-                    }
-                })?;
-
-                // Set directory permissions if specified
-                if let Some(dir_mode) = &args.directory_mode {
-                    set_permissions(parent_dir, dir_mode).await.map_err(|e| {
-                        ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to set directory permissions: {e}"),
-                        }
-                    })?;
+                if !output.status.success() {
+                    return Err(ModuleExecutionError::ExecutionFailed {
+                        message: format!(
+                            "Validation command failed: {}",
+                            String::from_utf8_lossy(&output.stderr)
+                        ),
+                    });
                 }
+
+                results.insert(
+                    "validation_output".to_string(),
+                    serde_json::Value::String(String::from_utf8_lossy(&output.stdout).to_string()),
+                );
             }
-        }
-
-        // Perform atomic copy
-        let mut writer = AtomicWriter::new(dest_path).await.map_err(|e| {
-            ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to create atomic writer: {e}"),
-            }
-        })?;
-
-        let content =
-            fs::read(src_path)
-                .await
-                .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read source file: {e}"),
-                })?;
-
-        writer
-            .write_all(&content)
-            .await
-            .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to write destination file: {e}"),
-            })?;
-
-        writer
-            .commit()
-            .await
-            .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to commit file copy: {e}"),
-            })?;
-
-        changed = true;
-
-        // Set permissions if specified
-        if let Some(mode) = &args.mode {
-            set_permissions(dest_path, mode).await.map_err(|e| {
-                ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file permissions: {e}"),
-                }
-            })?;
-        }
-
-        // Set ownership if specified
-        if args.owner.is_some() || args.group.is_some() {
-            set_ownership(dest_path, args.owner.as_deref(), args.group.as_deref())
-                .await
-                .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set file ownership: {e}"),
-                })?;
-        }
-
-        // Run validation command if specified
-        if let Some(validate_cmd) = &args.validate {
-            let cmd = validate_cmd.replace("%s", &dest_path.to_string_lossy());
-            let output = Command::new("sh")
-                .arg("-c")
-                .arg(&cmd)
-                .output()
-                .await
-                .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to run validation command: {e}"),
-                })?;
-
-            if !output.status.success() {
-                return Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!(
-                        "Validation command failed: {}",
-                        String::from_utf8_lossy(&output.stderr)
-                    ),
-                });
-            }
-
-            results.insert(
-                "validation_output".to_string(),
-                serde_json::Value::String(String::from_utf8_lossy(&output.stdout).to_string()),
-            );
         }
 
         results.insert(
@@ -438,7 +349,7 @@ impl CopyModule {
         );
         results.insert(
             "dest".to_string(),
-            serde_json::Value::String(args.dest.clone()),
+            serde_json::Value::String(dest_path.to_string_lossy().to_string()),
         );
 
         Ok(ModuleResult {
@@ -557,6 +468,191 @@ impl CopyModule {
                 })?;
 
         Ok(src_content != dest_content)
+    }
+
+    fn resolve_destination_path(
+        &self,
+        src_path: &Path,
+        dest_path: &Path,
+    ) -> Result<std::path::PathBuf, ModuleExecutionError> {
+        if dest_path.is_dir() {
+            // Copy into directory with source filename
+            if let Some(filename) = src_path.file_name() {
+                Ok(dest_path.join(filename))
+            } else {
+                Err(ModuleExecutionError::ExecutionFailed {
+                    message: format!("Source path has no filename: {}", src_path.display()),
+                })
+            }
+        } else {
+            Ok(dest_path.to_path_buf())
+        }
+    }
+
+    async fn copy_file(
+        &self,
+        src_path: &Path,
+        dest_path: &Path,
+        args: &CopyArgs,
+    ) -> Result<bool, ModuleExecutionError> {
+        // Check if destination exists and whether we should proceed
+        let dest_exists = dest_path.exists();
+        if dest_exists && !args.force.unwrap_or(false) {
+            // Check if files are different
+            let files_different = self.files_are_different(src_path, dest_path).await?;
+            if !files_different {
+                return Ok(false); // No changes needed
+            }
+        }
+
+        // Create backup if requested and destination exists
+        if args.backup.unwrap_or(false) && dest_exists {
+            create_backup(dest_path, None).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to create backup: {e}"),
+                }
+            })?;
+        }
+
+        // Create destination directory if it doesn't exist
+        if let Some(parent_dir) = dest_path.parent() {
+            if !parent_dir.exists() {
+                fs::create_dir_all(parent_dir).await.map_err(|e| {
+                    ModuleExecutionError::ExecutionFailed {
+                        message: format!("Failed to create destination directory: {e}"),
+                    }
+                })?;
+
+                // Set directory permissions if specified
+                if let Some(dir_mode) = &args.directory_mode {
+                    set_permissions(parent_dir, dir_mode).await.map_err(|e| {
+                        ModuleExecutionError::ExecutionFailed {
+                            message: format!("Failed to set directory permissions: {e}"),
+                        }
+                    })?;
+                }
+            }
+        }
+
+        // Perform atomic copy
+        let mut writer = AtomicWriter::new(dest_path).await.map_err(|e| {
+            ModuleExecutionError::ExecutionFailed {
+                message: format!("Failed to create atomic writer: {e}"),
+            }
+        })?;
+
+        let content =
+            fs::read(src_path)
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to read source file: {e}"),
+                })?;
+
+        writer
+            .write_all(&content)
+            .await
+            .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                message: format!("Failed to write destination file: {e}"),
+            })?;
+
+        writer
+            .commit()
+            .await
+            .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                message: format!("Failed to commit file copy: {e}"),
+            })?;
+
+        // Set permissions - either preserve source or use specified mode
+        if args.preserve.unwrap_or(false) {
+            // Preserve source permissions
+            let src_permissions = get_permissions(src_path).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to get source permissions: {e}"),
+                }
+            })?;
+            set_permissions(dest_path, &src_permissions)
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to preserve file permissions: {e}"),
+                })?;
+        } else if let Some(mode) = &args.mode {
+            set_permissions(dest_path, mode).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to set file permissions: {e}"),
+                }
+            })?;
+        }
+
+        // Set ownership if specified
+        if args.owner.is_some() || args.group.is_some() {
+            set_ownership(dest_path, args.owner.as_deref(), args.group.as_deref())
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to set file ownership: {e}"),
+                })?;
+        }
+
+        Ok(true) // File was copied
+    }
+
+    async fn copy_directory(
+        &self,
+        src_path: &Path,
+        dest_path: &Path,
+        args: &CopyArgs,
+    ) -> Result<bool, ModuleExecutionError> {
+        let mut changed = false;
+
+        // Create destination directory if it doesn't exist
+        if !dest_path.exists() {
+            fs::create_dir_all(dest_path).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to create destination directory: {e}"),
+                }
+            })?;
+            changed = true;
+        }
+
+        // Set directory permissions if specified
+        if let Some(dir_mode) = &args.directory_mode {
+            set_permissions(dest_path, dir_mode).await.map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to set directory permissions: {e}"),
+                }
+            })?;
+        }
+
+        // Recursively copy contents
+        let mut entries =
+            fs::read_dir(src_path)
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to read source directory: {e}"),
+                })?;
+
+        while let Some(entry) =
+            entries
+                .next_entry()
+                .await
+                .map_err(|e| ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to read directory entry: {e}"),
+                })?
+        {
+            let entry_path = entry.path();
+            let dest_entry_path = dest_path.join(entry.file_name());
+
+            if entry_path.is_dir() {
+                let result =
+                    Box::pin(self.copy_directory(&entry_path, &dest_entry_path, args)).await?;
+                if result {
+                    changed = true;
+                }
+            } else if self.copy_file(&entry_path, &dest_entry_path, args).await? {
+                changed = true;
+            }
+        }
+
+        Ok(changed)
     }
 }
 

@@ -300,11 +300,15 @@ async fn test_check_mode() {
         .state(FileState::Present)
         .build();
 
-    // For this test, we'd need to modify execute_module to accept custom context
-    // This is a simplified version
-    let result = env.execute_module("file", args).await.unwrap();
+    // Execute with check mode enabled
+    let result = env
+        .execute_module_with_context("file", args, &context)
+        .await
+        .unwrap();
 
-    // In check mode, file should not be created
-    // Note: This test would need modification of TestEnvironment to support check mode
+    // In check mode, file should not be created but result should indicate it would change
+    assert!(!result.failed);
     assert_file_not_exists(&file_path);
+    // In check mode, the module should report whether it would make changes
+    // The exact behavior depends on the module implementation
 }

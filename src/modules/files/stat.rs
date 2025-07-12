@@ -74,20 +74,23 @@ impl StatArgs {
 pub struct StatResult {
     pub exists: bool,
     pub path: String,
-    pub mode: String,
+    pub mode: Option<String>,
     pub isdir: bool,
     pub isreg: bool,
     pub islnk: bool,
     pub size: u64,
-    pub uid: u32,
-    pub gid: u32,
-    pub owner: String,
-    pub group: String,
+    pub uid: Option<u32>,
+    pub gid: Option<u32>,
+    pub owner: Option<String>,
+    pub group: Option<String>,
     pub mtime: f64,
     pub atime: f64,
     pub ctime: f64,
     pub checksum: Option<String>,
-    pub link_target: Option<String>,
+    pub checksum_algorithm: Option<String>,
+    pub lnk_target: Option<String>,
+    pub mime_type: Option<String>,
+    pub attributes: Option<HashMap<String, serde_json::Value>>,
 }
 
 /// Stat module implementation
@@ -226,30 +229,36 @@ impl StatModule {
             let stat_result = StatResult {
                 exists: false,
                 path: args.path.clone(),
-                mode: "0000".to_string(),
+                mode: None,
                 isdir: false,
                 isreg: false,
                 islnk: false,
                 size: 0,
-                uid: 0,
-                gid: 0,
-                owner: "".to_string(),
-                group: "".to_string(),
+                uid: None,
+                gid: None,
+                owner: None,
+                group: None,
                 mtime: 0.0,
                 atime: 0.0,
                 ctime: 0.0,
                 checksum: None,
-                link_target: None,
+                checksum_algorithm: None,
+                lnk_target: None,
+                mime_type: None,
+                attributes: None,
             };
 
-            results.insert(
-                "stat".to_string(),
-                serde_json::to_value(stat_result).map_err(|e| {
-                    ModuleExecutionError::ExecutionFailed {
-                        message: format!("Failed to serialize stat result: {e}"),
-                    }
-                })?,
-            );
+            let stat_json = serde_json::to_value(stat_result).map_err(|e| {
+                ModuleExecutionError::ExecutionFailed {
+                    message: format!("Failed to serialize stat result: {e}"),
+                }
+            })?;
+
+            results.insert("stat".to_string(), stat_json.clone());
+
+            // Create ansible_facts format as expected by tests
+            let mut ansible_facts = HashMap::new();
+            ansible_facts.insert("stat".to_string(), stat_json);
 
             return Ok(ModuleResult {
                 changed: false,
@@ -261,7 +270,7 @@ impl StatModule {
                 results,
                 diff: None,
                 warnings: vec![],
-                ansible_facts: HashMap::new(),
+                ansible_facts,
             });
         }
 
@@ -303,27 +312,26 @@ impl StatModule {
             .as_secs_f64();
 
         // Get permissions
-        let mode = get_permissions(path)
-            .await
-            .unwrap_or_else(|_| "0000".to_string());
+        let mode = get_permissions(path).await.ok();
 
         // Get ownership
         let (owner, group) = get_ownership(path)
             .await
-            .unwrap_or_else(|_| ("unknown".to_string(), "unknown".to_string()));
+            .map(|(o, g)| (Some(o), Some(g)))
+            .unwrap_or((None, None));
 
         // Platform-specific metadata
         #[cfg(unix)]
         let (uid, gid) = {
             use std::os::unix::fs::MetadataExt;
-            (metadata.uid(), metadata.gid())
+            (Some(metadata.uid()), Some(metadata.gid()))
         };
 
         #[cfg(not(unix))]
-        let (uid, gid) = (0, 0);
+        let (uid, gid) = (None, None);
 
         // Get symlink target if it's a symlink
-        let link_target = if is_symlink {
+        let lnk_target = if is_symlink {
             fs::read_link(path)
                 .await
                 .ok()
@@ -333,21 +341,23 @@ impl StatModule {
         };
 
         // Calculate checksum if requested and it's a regular file
-        let checksum = if args.get_checksum.unwrap_or(false) && is_file {
+        let (checksum, checksum_algorithm) = if args.get_checksum.unwrap_or(false) && is_file {
             let algorithm = args
                 .checksum_algorithm
                 .as_ref()
                 .map(|s| s.parse().unwrap_or(ChecksumAlgorithm::Sha256))
                 .unwrap_or(ChecksumAlgorithm::Sha256);
 
-            calculate_file_checksum(path, algorithm)
+            let algorithm_str = algorithm.to_string();
+            let checksum_result = calculate_file_checksum(path, algorithm)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
                     message: format!("Failed to calculate checksum: {e}"),
-                })?
-                .into()
+                })?;
+
+            (Some(checksum_result), Some(algorithm_str))
         } else {
-            None
+            (None, None)
         };
 
         let stat_result = StatResult {
@@ -366,7 +376,10 @@ impl StatModule {
             atime,
             ctime,
             checksum,
-            link_target,
+            checksum_algorithm,
+            lnk_target,
+            mime_type: None,  // TODO: implement MIME type detection
+            attributes: None, // TODO: implement additional attributes
         };
 
         // Convert to JSON and add to results
@@ -376,7 +389,11 @@ impl StatModule {
             }
         })?;
 
-        results.insert("stat".to_string(), stat_json);
+        results.insert("stat".to_string(), stat_json.clone());
+
+        // Create ansible_facts format as expected by tests
+        let mut ansible_facts = HashMap::new();
+        ansible_facts.insert("stat".to_string(), stat_json);
 
         Ok(ModuleResult {
             changed: false, // Stat never changes anything
@@ -388,7 +405,7 @@ impl StatModule {
             results,
             diff: None,
             warnings: vec![],
-            ansible_facts: HashMap::new(),
+            ansible_facts,
         })
     }
 }

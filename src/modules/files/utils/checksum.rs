@@ -32,6 +32,17 @@ impl std::str::FromStr for ChecksumAlgorithm {
     }
 }
 
+impl std::fmt::Display for ChecksumAlgorithm {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            ChecksumAlgorithm::Md5 => "md5",
+            ChecksumAlgorithm::Sha1 => "sha1",
+            ChecksumAlgorithm::Sha256 => "sha256",
+        };
+        write!(f, "{s}")
+    }
+}
+
 /// Calculate file checksum using specified algorithm
 pub async fn calculate_file_checksum(
     path: &Path,

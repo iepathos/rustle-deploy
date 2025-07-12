@@ -287,8 +287,12 @@ impl FileModule {
     async fn execute_file_operation(
         &self,
         args: &FileArgs,
-        _context: &ExecutionContext,
+        context: &ExecutionContext,
     ) -> Result<ModuleResult, ModuleExecutionError> {
+        // If we're in check mode, delegate to the analyze method
+        if context.check_mode {
+            return self.analyze_file_operation(args, context).await;
+        }
         let path = Path::new(&args.path);
         let mut changed = false;
         let mut results = HashMap::new();

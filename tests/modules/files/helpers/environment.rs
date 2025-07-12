@@ -71,22 +71,33 @@ impl TestEnvironment {
 
     /// Execute a module with the given arguments
     pub async fn execute_module(&self, name: &str, args: ModuleArgs) -> Result<ModuleResult> {
+        self.execute_module_with_context(name, args, &self.context)
+            .await
+    }
+
+    /// Execute a module with a custom context
+    pub async fn execute_module_with_context(
+        &self,
+        name: &str,
+        args: ModuleArgs,
+        context: &ExecutionContext,
+    ) -> Result<ModuleResult> {
         let result = match name {
             "file" => {
                 let file_module = FileModule;
-                file_module.execute(&args, &self.context).await
+                file_module.execute(&args, context).await
             }
             "copy" => {
                 let copy_module = CopyModule;
-                copy_module.execute(&args, &self.context).await
+                copy_module.execute(&args, context).await
             }
             "stat" => {
                 let stat_module = StatModule;
-                stat_module.execute(&args, &self.context).await
+                stat_module.execute(&args, context).await
             }
             "template" => {
                 let template_module = TemplateModule;
-                template_module.execute(&args, &self.context).await
+                template_module.execute(&args, context).await
             }
             _ => anyhow::bail!("Unknown module: {}", name),
         };

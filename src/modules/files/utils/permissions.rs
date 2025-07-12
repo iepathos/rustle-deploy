@@ -150,16 +150,16 @@ pub async fn get_permissions(path: &Path) -> Result<String, FileError> {
     {
         use std::os::unix::fs::PermissionsExt;
         let mode = metadata.permissions().mode() & 0o777;
-        Ok(format!("{mode:o}"))
+        Ok(format!("0{mode:o}"))
     }
 
     #[cfg(windows)]
     {
         // Windows simplified representation
         if metadata.permissions().readonly() {
-            Ok("444".to_string()) // Read-only
+            Ok("0444".to_string()) // Read-only
         } else {
-            Ok("644".to_string()) // Read-write
+            Ok("0644".to_string()) // Read-write
         }
     }
 }
