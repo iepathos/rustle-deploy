@@ -212,7 +212,7 @@ pub enum SecretSource {
     Vault { path: String, key: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EmbeddedData {
     #[serde(default)]
     pub execution_plan: String,
@@ -232,8 +232,9 @@ pub struct EmbeddedStaticFile {
     pub size: u64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum ExecutionMode {
+    #[default]
     Controller,
     Standalone,
     Hybrid,
@@ -350,23 +351,6 @@ mod serde_duration_opt_legacy {
 
         let helper_opt = Option::<DurationHelper>::deserialize(deserializer)?;
         Ok(helper_opt.map(|helper| Duration::new(helper.secs, helper.nanos)))
-    }
-}
-
-impl Default for EmbeddedData {
-    fn default() -> Self {
-        Self {
-            execution_plan: String::new(),
-            static_files: vec![],
-            variables: HashMap::new(),
-            facts_required: vec![],
-        }
-    }
-}
-
-impl Default for ExecutionMode {
-    fn default() -> Self {
-        ExecutionMode::Controller
     }
 }
 

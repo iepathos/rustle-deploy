@@ -61,7 +61,7 @@ impl BinaryDeploymentAnalyzer {
                 let deployment = BinaryDeploymentPlan {
                     deployment_id: deployment_id.clone(),
                     target_hosts: hosts.to_vec(),
-                    binary_name: format!("rustle-runner-{}", deployment_id),
+                    binary_name: format!("rustle-runner-{deployment_id}"),
                     tasks: task_ids.clone(),
                     modules: modules.clone(),
                     embedded_data: Default::default(),

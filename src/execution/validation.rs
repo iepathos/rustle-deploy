@@ -318,7 +318,7 @@ impl RustlePlanValidator {
             if !self.is_valid_target_triple(&target_arch) {
                 return Err(ValidationError::Semantic {
                     field: format!("binary_deployments[{idx}].target_architecture"),
-                    reason: format!("Invalid target architecture: '{}'", target_arch),
+                    reason: format!("Invalid target architecture: '{target_arch}'"),
                 });
             }
         }

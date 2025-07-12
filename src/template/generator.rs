@@ -369,7 +369,7 @@ impl BinaryTemplateGenerator {
 
         for module in modules {
             let module_name = module.name.replace(':', "_");
-            mod_declarations.push(format!("pub mod {};", module_name));
+            mod_declarations.push(format!("pub mod {module_name};"));
         }
 
         let mod_file_content = mod_declarations.join("\n");

@@ -120,7 +120,7 @@ impl BinaryDeploymentPlanner {
         let estimated_savings = self.calculate_time_savings(tasks)?;
         let compilation_requirements = self.build_compilation_requirements(tasks, architecture)?;
 
-        let binary_name = format!("rustle-runner-{}", deployment_id);
+        let binary_name = format!("rustle-runner-{deployment_id}");
         let modules: Vec<String> = tasks.iter().map(|t| t.module.clone()).collect();
 
         Ok(BinaryDeploymentPlan {
