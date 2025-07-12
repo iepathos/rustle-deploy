@@ -20,6 +20,23 @@ impl BinaryDeploymentAnalyzer {
         }
     }
 
+    fn parse_arch_from_triple(triple: &str) -> String {
+        if let Some(arch) = triple.split('-').next() {
+            arch.to_string()
+        } else {
+            "x86_64".to_string()
+        }
+    }
+
+    fn parse_os_from_triple(triple: &str) -> String {
+        let parts: Vec<&str> = triple.split('-').collect();
+        if parts.len() >= 3 {
+            parts[2].to_string()
+        } else {
+            "linux".to_string()
+        }
+    }
+
     pub fn analyze_tasks_for_binary_deployment(
         &self,
         tasks: &[TaskPlan],
@@ -34,19 +51,37 @@ impl BinaryDeploymentAnalyzer {
         for (architecture, compatible_tasks) in compatibility_groups {
             // Only create binary deployment if we have enough tasks
             if compatible_tasks.len() >= threshold as usize {
+                let deployment_id = format!("binary-{}", Uuid::new_v4());
+                let task_ids: Vec<String> =
+                    compatible_tasks.iter().map(|t| t.task_id.clone()).collect();
+                let modules = self.extract_required_modules(&compatible_tasks);
+                let static_files = self.extract_static_files(&compatible_tasks);
+                let estimated_savings = self.calculate_time_savings(&compatible_tasks)?;
+
                 let deployment = BinaryDeploymentPlan {
-                    deployment_id: format!("binary-{}", Uuid::new_v4()),
+                    deployment_id: deployment_id.clone(),
                     target_hosts: hosts.to_vec(),
-                    target_architecture: architecture.clone(),
-                    task_ids: compatible_tasks.iter().map(|t| t.task_id.clone()).collect(),
-                    estimated_savings: self.calculate_time_savings(&compatible_tasks)?,
+                    binary_name: format!("rustle-runner-{}", deployment_id),
+                    tasks: task_ids.clone(),
+                    modules: modules.clone(),
+                    embedded_data: Default::default(),
+                    execution_mode: Default::default(),
+                    estimated_size: 0,
                     compilation_requirements: CompilationRequirements {
-                        modules: self.extract_required_modules(&compatible_tasks),
-                        static_files: self.extract_static_files(&compatible_tasks),
-                        target_triple: architecture,
-                        optimization_level: "release".to_string(),
-                        features: vec!["binary-deployment".to_string()],
+                        target_arch: Self::parse_arch_from_triple(&architecture),
+                        target_os: Self::parse_os_from_triple(&architecture),
+                        rust_version: "1.70.0".to_string(),
+                        cross_compilation: false,
+                        static_linking: true,
+                        modules: Some(modules),
+                        static_files: Some(static_files),
+                        target_triple: Some(architecture.clone()),
+                        optimization_level: Some("release".to_string()),
+                        features: Some(vec!["binary-deployment".to_string()]),
                     },
+                    target_architecture: Some(architecture.clone()),
+                    task_ids: Some(task_ids),
+                    estimated_savings: Some(estimated_savings),
                     controller_endpoint: None,
                     execution_timeout: None,
                     report_interval: None,
@@ -70,18 +105,30 @@ impl BinaryDeploymentAnalyzer {
         deployment: &BinaryDeploymentPlan,
     ) -> Result<Duration, EstimationError> {
         let base_time = Duration::from_secs(30); // Base compilation time
-        let module_factor = deployment.compilation_requirements.modules.len() as u64 * 5;
-        let feature_factor = deployment.compilation_requirements.features.len() as u64 * 2;
+        let module_factor = deployment
+            .compilation_requirements
+            .modules
+            .as_ref()
+            .map(|m| m.len())
+            .unwrap_or(0) as u64
+            * 5;
+        let feature_factor = deployment
+            .compilation_requirements
+            .features
+            .as_ref()
+            .map(|f| f.len())
+            .unwrap_or(0) as u64
+            * 2;
 
         // Add complexity based on optimization level
         let optimization_factor = match deployment
             .compilation_requirements
             .optimization_level
-            .as_str()
+            .as_deref()
         {
-            "debug" => 1,
-            "release" => 3,
-            "lto" => 5,
+            Some("debug") => 1,
+            Some("release") => 3,
+            Some("lto") => 5,
             _ => 2,
         };
 

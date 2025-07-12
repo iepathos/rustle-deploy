@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use rustle_deploy::compilation::compiler::{BinaryCompiler, CompilerConfig};
 use rustle_deploy::compilation::TargetDetector;
+use rustle_deploy::execution::format_migration::FormatMigrator;
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
 use rustle_deploy::types::compilation::{OptimizationLevel, TargetSpecification};
@@ -449,6 +450,9 @@ async fn run_compilation(
         .unwrap_or_default();
     binary_deployment.verbose = Some(cli.verbose);
 
+    // Ensure migration is applied to this specific deployment
+    binary_deployment.migrate_from_legacy();
+
     let template = template_generator
         .generate_binary_template(&rustle_plan, &binary_deployment, &target_info)
         .await?;
@@ -513,7 +517,30 @@ async fn run_compilation(
 
 async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput> {
     let content = tokio::fs::read_to_string(path).await?;
-    let rustle_plan: RustlePlanOutput = serde_json::from_str(&content)?;
+    let mut rustle_plan: RustlePlanOutput = serde_json::from_str(&content)?;
+
+    // Apply format migration to ensure compatibility with both old and new formats
+    let migrator = FormatMigrator::new();
+    match migrator.migrate_rustle_plan_output(&mut rustle_plan) {
+        Ok(warnings) => {
+            if !warnings.is_empty() {
+                warn!(
+                    "Format migration completed with {} warnings",
+                    warnings.len()
+                );
+                for warning in warnings {
+                    warn!("Migration warning: {:?}", warning);
+                }
+            }
+        }
+        Err(e) => {
+            warn!(
+                "Format migration failed, continuing with original format: {}",
+                e
+            );
+        }
+    }
+
     Ok(rustle_plan)
 }
 

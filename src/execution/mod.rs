@@ -10,6 +10,7 @@ pub mod validator;
 // Rustle Plan Output compatibility modules
 pub mod binary_analyzer;
 pub mod compatibility;
+pub mod format_migration;
 pub mod plan_converter;
 pub mod rustle_plan;
 pub mod validation;
@@ -17,6 +18,7 @@ pub mod validation;
 pub use binary_analyzer::*;
 pub use compatibility::{AnalysisError, ConversionError, RustlePlanParseError, SchemaValidator};
 pub use error::*;
+pub use format_migration::{FormatMigrator, MigrationConfig, MigrationError, MigrationWarning};
 pub use inventory::*;
 pub use parser::*;
 pub use plan::*;

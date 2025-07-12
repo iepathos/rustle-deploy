@@ -22,6 +22,23 @@ impl BinaryDeploymentPlanner {
         }
     }
 
+    fn parse_arch_from_triple(triple: &str) -> String {
+        if let Some(arch) = triple.split('-').next() {
+            arch.to_string()
+        } else {
+            "x86_64".to_string()
+        }
+    }
+
+    fn parse_os_from_triple(triple: &str) -> String {
+        let parts: Vec<&str> = triple.split('-').collect();
+        if parts.len() >= 3 {
+            parts[2].to_string()
+        } else {
+            "linux".to_string()
+        }
+    }
+
     pub fn create_deployment_plans(
         &self,
         tasks: &[TaskPlan],
@@ -103,13 +120,22 @@ impl BinaryDeploymentPlanner {
         let estimated_savings = self.calculate_time_savings(tasks)?;
         let compilation_requirements = self.build_compilation_requirements(tasks, architecture)?;
 
+        let binary_name = format!("rustle-runner-{}", deployment_id);
+        let modules: Vec<String> = tasks.iter().map(|t| t.module.clone()).collect();
+
         Ok(BinaryDeploymentPlan {
             deployment_id,
             target_hosts: hosts.to_vec(),
-            target_architecture: architecture.to_string(),
-            task_ids,
-            estimated_savings,
+            binary_name,
+            tasks: task_ids.clone(),
+            modules,
+            embedded_data: Default::default(),
+            execution_mode: Default::default(),
+            estimated_size: 0,
             compilation_requirements,
+            target_architecture: Some(architecture.to_string()),
+            task_ids: Some(task_ids),
+            estimated_savings: Some(estimated_savings),
             controller_endpoint: None,
             execution_timeout: None,
             report_interval: None,
@@ -200,11 +226,16 @@ impl BinaryDeploymentPlanner {
         };
 
         Ok(CompilationRequirements {
-            modules,
-            static_files,
-            target_triple: architecture.to_string(),
-            optimization_level,
-            features,
+            target_arch: Self::parse_arch_from_triple(architecture),
+            target_os: Self::parse_os_from_triple(architecture),
+            rust_version: "1.70.0".to_string(),
+            cross_compilation: false,
+            static_linking: true,
+            modules: Some(modules),
+            static_files: Some(static_files),
+            target_triple: Some(architecture.to_string()),
+            optimization_level: Some(optimization_level),
+            features: Some(features),
         })
     }
 

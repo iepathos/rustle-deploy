@@ -279,7 +279,19 @@ impl RustlePlanValidator {
                 .map(|task| task.task_id.clone())
                 .collect();
 
-            for task_id in &binary_deployment.task_ids {
+            // Check both new format (tasks) and legacy format (task_ids)
+            let task_list = if !binary_deployment.tasks.is_empty() {
+                &binary_deployment.tasks
+            } else if let Some(ref task_ids) = binary_deployment.task_ids {
+                task_ids
+            } else {
+                return Err(ValidationError::Semantic {
+                    field: format!("binary_deployments[{idx}].tasks"),
+                    reason: "No tasks or task_ids specified in binary deployment".to_string(),
+                });
+            };
+
+            for task_id in task_list {
                 if !all_task_ids.contains(task_id) {
                     return Err(ValidationError::Reference {
                         reference: task_id.clone(),
@@ -301,14 +313,12 @@ impl RustlePlanValidator {
                 }
             }
 
-            // Validate target architecture format
-            if !self.is_valid_target_triple(&binary_deployment.target_architecture) {
+            // Validate target architecture format (handle both new and legacy formats)
+            let target_arch = binary_deployment.get_target_architecture();
+            if !self.is_valid_target_triple(&target_arch) {
                 return Err(ValidationError::Semantic {
                     field: format!("binary_deployments[{idx}].target_architecture"),
-                    reason: format!(
-                        "Invalid target architecture: '{}'",
-                        binary_deployment.target_architecture
-                    ),
+                    reason: format!("Invalid target architecture: '{}'", target_arch),
                 });
             }
         }
