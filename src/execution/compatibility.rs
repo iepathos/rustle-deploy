@@ -151,10 +151,10 @@ impl SchemaValidator {
             "properties": {
                 "metadata": {
                     "type": "object",
-                    "required": ["created_at", "rustle_version", "playbook_hash", "inventory_hash", "planning_options"],
+                    "required": ["created_at", "rustle_plan_version", "playbook_hash", "inventory_hash", "planning_options"],
                     "properties": {
                         "created_at": { "type": "string", "format": "date-time" },
-                        "rustle_version": { "type": "string" },
+                        "rustle_plan_version": { "type": "string" },
                         "playbook_hash": { "type": "string" },
                         "inventory_hash": { "type": "string" },
                         "planning_options": {
@@ -285,7 +285,7 @@ mod tests {
         let valid_plan = serde_json::json!({
             "metadata": {
                 "created_at": "2025-07-11T05:18:16.945474Z",
-                "rustle_version": "0.1.0",
+                "rustle_plan_version": "0.1.0",
                 "playbook_hash": "test",
                 "inventory_hash": "test",
                 "planning_options": {

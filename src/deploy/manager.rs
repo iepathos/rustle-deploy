@@ -47,7 +47,7 @@ impl DeploymentManager {
             metadata: DeploymentMetadata {
                 deployment_id: deployment_id.clone(),
                 created_at: Utc::now(),
-                rustle_version: env!("CARGO_PKG_VERSION").to_string(),
+                rustle_plan_version: env!("CARGO_PKG_VERSION").to_string(),
                 execution_plan_hash,
                 compiler_version: self.get_compiler_version(),
             },

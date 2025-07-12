@@ -1,7 +1,7 @@
 {
   "metadata": {
     "created_at": "2025-07-12T21:56:49.488570Z",
-    "rustle_version": "0.1.0",
+    "rustle_plan_version": "0.1.0",
     "playbook_hash": "771bae5a30fb7f3df8ba31e6f571ef79",
     "inventory_hash": "653a2ee28be80c8e41d5251b3923d10d",
     "planning_options": {

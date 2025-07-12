@@ -16,7 +16,7 @@ fn create_test_execution_plan() -> RustlePlanOutput {
     RustlePlanOutput {
         metadata: RustlePlanMetadata {
             created_at: Utc::now(),
-            rustle_version: "1.0.0".to_string(),
+            rustle_plan_version: "1.0.0".to_string(),
             playbook_hash: "test-hash".to_string(),
             inventory_hash: "test-inventory-hash".to_string(),
             planning_options: PlanningOptions {

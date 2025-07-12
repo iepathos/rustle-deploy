@@ -18,7 +18,7 @@ async fn create_test_template() -> (BinaryTemplateGenerator, RustlePlanOutput, B
     let execution_plan = serde_json::from_str(r#"{
         "metadata": {
             "created_at": "2024-01-01T00:00:00Z",
-            "rustle_version": "1.0.0",
+            "rustle_plan_version": "1.0.0",
             "playbook_hash": "test-hash",
             "inventory_hash": "test-inventory-hash",
             "planning_options": {
@@ -302,7 +302,7 @@ async fn test_platform_specific_generation() {
     let execution_plan = serde_json::from_str(r#"{
         "metadata": {
             "created_at": "2024-01-01T00:00:00Z",
-            "rustle_version": "1.0.0",
+            "rustle_plan_version": "1.0.0",
             "playbook_hash": "test-hash",
             "inventory_hash": "test-inventory-hash",
             "planning_options": {

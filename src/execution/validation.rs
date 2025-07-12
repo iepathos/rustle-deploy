@@ -45,16 +45,16 @@ impl RustlePlanValidator {
         &self,
         plan: &RustlePlanOutput,
     ) -> Result<(), ValidationError> {
-        let version = Version::parse(&plan.metadata.rustle_version).map_err(|e| {
+        let version = Version::parse(&plan.metadata.rustle_plan_version).map_err(|e| {
             ValidationError::Semantic {
-                field: "metadata.rustle_version".to_string(),
+                field: "metadata.rustle_plan_version".to_string(),
                 reason: format!("Invalid version format: {e}"),
             }
         })?;
 
         if version < self.min_supported_version {
             return Err(ValidationError::Semantic {
-                field: "metadata.rustle_version".to_string(),
+                field: "metadata.rustle_plan_version".to_string(),
                 reason: format!(
                     "Version {} is too old, minimum supported: {}",
                     version, self.min_supported_version
@@ -64,7 +64,7 @@ impl RustlePlanValidator {
 
         if version > self.max_supported_version {
             return Err(ValidationError::Semantic {
-                field: "metadata.rustle_version".to_string(),
+                field: "metadata.rustle_plan_version".to_string(),
                 reason: format!(
                     "Version {} is too new, maximum supported: {}",
                     version, self.max_supported_version
@@ -413,7 +413,7 @@ mod tests {
         RustlePlanOutput {
             metadata: RustlePlanMetadata {
                 created_at: Utc::now(),
-                rustle_version: "0.1.0".to_string(),
+                rustle_plan_version: "0.1.0".to_string(),
                 playbook_hash: "test-hash".to_string(),
                 inventory_hash: "inv-hash".to_string(),
                 planning_options: PlanningOptions {
@@ -462,12 +462,12 @@ mod tests {
         let mut plan = create_minimal_valid_plan();
 
         // Test unsupported old version
-        plan.metadata.rustle_version = "0.0.1".to_string();
+        plan.metadata.rustle_plan_version = "0.0.1".to_string();
         let result = validator.validate_version_compatibility(&plan);
         assert!(result.is_err());
 
         // Test supported version
-        plan.metadata.rustle_version = "0.1.0".to_string();
+        plan.metadata.rustle_plan_version = "0.1.0".to_string();
         let result = validator.validate_version_compatibility(&plan);
         assert!(result.is_ok());
     }
@@ -506,7 +506,7 @@ mod tests {
         let valid_json = r#"{
             "metadata": {
                 "created_at": "2025-07-11T05:18:16.945474Z",
-                "rustle_version": "0.1.0",
+                "rustle_plan_version": "0.1.0",
                 "playbook_hash": "test",
                 "inventory_hash": "test",
                 "planning_options": {

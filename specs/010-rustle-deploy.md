@@ -84,7 +84,7 @@ pub struct DeploymentPlan {
 pub struct DeploymentMetadata {
     pub deployment_id: String,
     pub created_at: DateTime<Utc>,
-    pub rustle_version: String,
+    pub rustle_plan_version: String,
     pub execution_plan_hash: String,
     pub compiler_version: String,
 }

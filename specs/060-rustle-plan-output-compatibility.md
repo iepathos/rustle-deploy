@@ -58,7 +58,7 @@ pub struct RustlePlanOutput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RustlePlanMetadata {
     pub created_at: DateTime<Utc>,
-    pub rustle_version: String,
+    pub rustle_plan_version: String,
     pub playbook_hash: String,
     pub inventory_hash: String,
     pub planning_options: PlanningOptions,
@@ -477,7 +477,7 @@ impl RustlePlanParser {
             metadata: ExecutionPlanMetadata {
                 version: "1.0".to_string(),
                 created_at: rustle_plan.metadata.created_at,
-                rustle_plan_version: rustle_plan.metadata.rustle_version.clone(),
+                rustle_plan_version: rustle_plan.metadata.rustle_plan_version.clone(),
                 plan_id: format!("rustle-{}", rustle_plan.metadata.playbook_hash),
                 description: None,
                 author: None,

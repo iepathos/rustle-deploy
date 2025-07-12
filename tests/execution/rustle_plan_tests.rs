@@ -209,7 +209,7 @@ async fn test_metadata_parsing() {
         .expect("Failed to parse rustle plan");
     
     let metadata = &rustle_plan.metadata;
-    assert_eq!(metadata.rustle_version, "0.1.0");
+    assert_eq!(metadata.rustle_plan_version, "0.1.0");
     assert!(!metadata.playbook_hash.is_empty());
     assert!(!metadata.inventory_hash.is_empty());
     
@@ -236,7 +236,7 @@ mod error_cases {
         let incomplete_json = r#"{
             "metadata": {
                 "created_at": "2025-07-11T05:18:16.945474Z",
-                "rustle_version": "0.1.0"
+                "rustle_plan_version": "0.1.0"
             }
         }"#;
         
@@ -249,7 +249,7 @@ mod error_cases {
         let invalid_strategy_json = r#"{
             "metadata": {
                 "created_at": "2025-07-11T05:18:16.945474Z",
-                "rustle_version": "0.1.0",
+                "rustle_plan_version": "0.1.0",
                 "playbook_hash": "test",
                 "inventory_hash": "test",
                 "planning_options": {

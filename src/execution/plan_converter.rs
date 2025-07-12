@@ -114,7 +114,7 @@ impl RustlePlanConverter {
         Ok(ExecutionPlanMetadata {
             version: "1.0".to_string(),
             created_at: rustle_plan.metadata.created_at,
-            rustle_plan_version: rustle_plan.metadata.rustle_version.clone(),
+            rustle_plan_version: rustle_plan.metadata.rustle_plan_version.clone(),
             plan_id: format!("rustle-{}", rustle_plan.metadata.playbook_hash),
             description: None,
             author: None,
@@ -428,7 +428,7 @@ mod tests {
         RustlePlanOutput {
             metadata: RustlePlanMetadata {
                 created_at: Utc::now(),
-                rustle_version: "0.1.0".to_string(),
+                rustle_plan_version: "0.1.0".to_string(),
                 playbook_hash: "test-hash".to_string(),
                 inventory_hash: "inv-hash".to_string(),
                 planning_options: PlanningOptions {
