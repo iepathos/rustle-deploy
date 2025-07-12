@@ -28,6 +28,9 @@ impl ModuleRegistry {
         registry.register(Box::new(crate::modules::core::PackageModule::new()));
         registry.register(Box::new(crate::modules::core::ServiceModule::new()));
 
+        // Register system modules
+        registry.register(Box::new(crate::modules::system::setup::SetupModule::new()));
+
         registry
     }
 
