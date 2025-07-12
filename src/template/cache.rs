@@ -205,7 +205,6 @@ mod tests {
     use super::*;
     use crate::template::{EmbeddedData, EncryptedSecrets, TargetInfo};
     use crate::types::deployment::RuntimeConfig;
-    use crate::types::Platform;
     use std::collections::HashMap;
 
     fn create_test_template(id: &str) -> GeneratedTemplate {
