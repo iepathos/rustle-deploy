@@ -16,9 +16,11 @@ pub trait ModuleParameterHandler {
     ) -> Result<HashMap<String, Value>, ParameterError>;
 
     /// Get required parameters for this module
+    #[allow(dead_code)]
     fn required_parameters(&self) -> Vec<&'static str>;
 
     /// Get parameter aliases for this module
+    #[allow(dead_code)]
     fn parameter_aliases(&self) -> HashMap<&'static str, Vec<&'static str>>;
 
     /// Validate that all required parameters are present
