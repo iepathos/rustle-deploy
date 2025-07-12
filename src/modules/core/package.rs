@@ -41,14 +41,18 @@ impl PackageModule {
         // Register platform-specific package managers
         #[cfg(target_os = "linux")]
         {
-            use crate::modules::system::package_managers::{AptPackageManager, DnfPackageManager, YumPackageManager};
-            
+            use crate::modules::system::package_managers::{
+                AptPackageManager, DnfPackageManager, YumPackageManager,
+            };
+
             // Detect Linux distribution to choose appropriate package manager
             let package_manager: Box<dyn PackageManager> = match Self::detect_linux_distribution() {
                 LinuxDistribution::Debian | LinuxDistribution::Ubuntu => {
                     Box::new(AptPackageManager::new())
                 }
-                LinuxDistribution::RedHat | LinuxDistribution::CentOS | LinuxDistribution::Fedora => {
+                LinuxDistribution::RedHat
+                | LinuxDistribution::CentOS
+                | LinuxDistribution::Fedora => {
                     // Prefer DNF over YUM if available
                     if Self::is_dnf_available() {
                         Box::new(DnfPackageManager::new())
@@ -61,7 +65,7 @@ impl PackageModule {
                     Box::new(AptPackageManager::new())
                 }
             };
-            
+
             package_managers.insert(Platform::Linux, package_manager);
         }
 
@@ -96,8 +100,11 @@ impl PackageModule {
             if contents.contains("ID=centos") || contents.contains("ID=\"centos\"") {
                 return LinuxDistribution::CentOS;
             }
-            if contents.contains("ID=rhel") || contents.contains("ID=\"rhel\"") || 
-               contents.contains("ID=redhat") || contents.contains("ID=\"redhat\"") {
+            if contents.contains("ID=rhel")
+                || contents.contains("ID=\"rhel\"")
+                || contents.contains("ID=redhat")
+                || contents.contains("ID=\"redhat\"")
+            {
                 return LinuxDistribution::RedHat;
             }
         }
