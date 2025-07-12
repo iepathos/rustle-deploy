@@ -12,7 +12,7 @@ impl AstParser {
     /// Extract the execute function from module source code
     pub fn extract_execute_function(&self, source: &str) -> Result<Option<String>, CompileError> {
         let ast: File = parse_str(source).map_err(|e| CompileError::SyntaxError {
-            message: format!("Failed to parse Rust code: {}", e),
+            message: format!("Failed to parse Rust code: {e}"),
         })?;
 
         for item in ast.items {
@@ -29,7 +29,7 @@ impl AstParser {
     /// Find all functions in the source code
     pub fn find_all_functions(&self, source: &str) -> Result<Vec<ItemFn>, CompileError> {
         let ast: File = parse_str(source).map_err(|e| CompileError::SyntaxError {
-            message: format!("Failed to parse Rust code: {}", e),
+            message: format!("Failed to parse Rust code: {e}"),
         })?;
 
         let mut functions = Vec::new();
@@ -53,7 +53,7 @@ impl AstParser {
     /// Transform module source by removing main and test functions
     pub fn prepare_module_source(&self, source: &str) -> Result<String, CompileError> {
         let mut ast: File = parse_str(source).map_err(|e| CompileError::SyntaxError {
-            message: format!("Failed to parse Rust code: {}", e),
+            message: format!("Failed to parse Rust code: {e}"),
         })?;
 
         // Filter out main functions and test modules

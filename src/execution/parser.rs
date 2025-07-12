@@ -156,7 +156,7 @@ impl ExecutionPlanParser {
                 if dependencies.contains(&task_id) {
                     let current_degree = in_degree.get_mut(dependent_id).ok_or_else(|| {
                         OrderingError::TopologicalSortFailed {
-                            reason: format!("Task '{}' not found in in-degree map", dependent_id),
+                            reason: format!("Task '{dependent_id}' not found in in-degree map"),
                         }
                     })?;
                     *current_degree -= 1;

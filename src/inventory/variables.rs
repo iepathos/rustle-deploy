@@ -91,8 +91,7 @@ impl VariableResolver {
             let cycle_start = path.iter().position(|g| g == group_name).ok_or_else(|| {
                 VariableError::InternalError {
                     message: format!(
-                        "Group {} not found in path during circular dependency check",
-                        group_name
+                        "Group {group_name} not found in path during circular dependency check"
                     ),
                 }
             })?;

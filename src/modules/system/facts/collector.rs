@@ -418,7 +418,7 @@ impl SystemFactCollector {
 
         #[cfg(target_os = "macos")]
         {
-            return "launchd".to_string();
+            "launchd".to_string()
         }
 
         #[cfg(target_os = "windows")]
