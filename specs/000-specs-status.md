@@ -18,6 +18,7 @@ This document tracks the status of all specification documents in the project.
 | 100 | Binary Compilation Pipeline | ✅ Complete |
 | 120 | Binary Output Management | ✅ Complete |
 | 130 | Module Parameter Compatibility | ✅ Complete |
+| 140 | Core File Operations Modules | ✅ Complete |
 | 180 | API Consolidation and Type System Unification | ✅ Complete |
 
 ## In Progress / Planned Specs
@@ -25,7 +26,6 @@ This document tracks the status of all specification documents in the project.
 | Spec | Feature | Status |
 |------|---------|--------|
 | 110 | End-to-End Testing Framework | ⬜ Planned |
-| 140 | Core File Operations Modules | ⬜ Planned |
 | 150 | System Facts Gathering Module | ⬜ Planned |
 | 160 | Archive Git URL Operations Modules | ⬜ Planned |
 | 170 | User Group Management Modules | ⬜ Planned |
