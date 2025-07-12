@@ -34,6 +34,7 @@ This document tracks the status of all specification documents in the project.
 | 150 | System Facts Gathering Module | ⬜ Planned |
 | 160 | Archive Git URL Operations Modules | ⬜ Planned |
 | 170 | User Group Management Modules | ⬜ Planned |
+| 230 | Rustle-Plan Format Compatibility Update | ⬜ Planned |
 
 
 ## Notes
