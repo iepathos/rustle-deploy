@@ -46,6 +46,7 @@ impl DataEmbedder {
                 .log_level
                 .clone()
                 .unwrap_or_else(|| String::from("info")),
+            verbose: binary_deployment.verbose.unwrap_or(false),
         };
 
         let secrets = EncryptedSecrets {

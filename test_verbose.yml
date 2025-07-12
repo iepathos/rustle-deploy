@@ -1,0 +1,14 @@
+
+- name: Test verbose logging
+  hosts: localhost
+  tasks:
+    - name: Debug task
+      debug:
+        msg: "hello world"
+    - name: Package task  
+      package:
+        name: git
+        state: present
+    - name: Command task
+      command: /bin/true
+

@@ -81,6 +81,8 @@ pub struct RuntimeConfig {
     pub report_interval: Duration,
     pub cleanup_on_completion: bool,
     pub log_level: String,
+    #[serde(default)]
+    pub verbose: bool,
 }
 
 mod serde_duration {

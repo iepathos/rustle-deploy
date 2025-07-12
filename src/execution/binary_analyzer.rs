@@ -55,6 +55,7 @@ impl BinaryDeploymentAnalyzer {
                     max_retries: None,
                     static_files: vec![],
                     secrets: vec![],
+                    verbose: None,
                 };
 
                 deployments.push(deployment);

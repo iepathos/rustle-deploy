@@ -347,6 +347,7 @@ impl DeploymentManager {
                         parallel_tasks: Some(4),
                         facts_cache_ttl: std::time::Duration::from_secs(300),
                         retry_policy: None,
+                        verbose: false,
                     },
                     facts_template: execution_plan.facts_template.global_facts.clone(),
                 },

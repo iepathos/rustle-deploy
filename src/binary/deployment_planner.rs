@@ -118,6 +118,7 @@ impl BinaryDeploymentPlanner {
             max_retries: None,
             static_files: vec![],
             secrets: vec![],
+            verbose: None,
         })
     }
 

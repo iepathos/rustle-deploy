@@ -140,6 +140,7 @@ pub struct BinaryDeploymentPlan {
     pub max_retries: Option<u32>,
     pub static_files: Vec<StaticFileRef>,
     pub secrets: Vec<SecretRef>,
+    pub verbose: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -273,6 +274,7 @@ impl Default for BinaryDeploymentPlan {
             max_retries: Some(3),
             static_files: vec![],
             secrets: vec![],
+            verbose: Some(false),
         }
     }
 }

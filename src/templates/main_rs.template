@@ -75,7 +75,25 @@ mod runtime {
             }
             
             let success = results.iter().all(|r| r.success);
-            info!("Execution completed. Success: {}", success);
+            
+            if self.config.verbose {
+                for (i, result) in results.iter().enumerate() {
+                    debug!("Play {} ({}) success: {}", i, result.play_id, result.success);
+                    if !result.success {
+                        let failed_tasks: Vec<_> = result.task_results.iter()
+                            .filter(|t| t.module_result.failed)
+                            .map(|t| &t.task_id)
+                            .collect();
+                        debug!("  Failed tasks: {:?}", failed_tasks);
+                    }
+                }
+            }
+            
+            if success {
+                info!("Execution completed. Success: {}", success);
+            } else {
+                error!("Execution completed. Success: {}", success);
+            }
             
             Ok(ExecutionReport {
                 success,
@@ -92,9 +110,24 @@ mod runtime {
                 task_results.extend(batch_result.task_results);
             }
             
+            let play_success = task_results.iter().all(|r| !r.module_result.failed);
+            
+            if self.config.verbose {
+                let failed_tasks: Vec<_> = task_results.iter()
+                    .filter(|r| r.module_result.failed)
+                    .map(|r| &r.task_id)
+                    .collect();
+                    
+                if !failed_tasks.is_empty() {
+                    debug!("Play {} failed due to failed tasks: {:?}", play.play_id, failed_tasks);
+                } else {
+                    debug!("Play {} completed successfully", play.play_id);
+                }
+            }
+            
             Ok(PlayResult {
                 play_id: play.play_id.clone(),
-                success: task_results.iter().all(|r| !r.module_result.failed),
+                success: play_success,
                 task_results,
             })
         }
@@ -115,6 +148,14 @@ mod runtime {
                 match result {
                     Ok(task_result) => {
                         info!("Task {} completed successfully", task.task_id);
+                        if self.config.verbose {
+                            debug!("Task {} result: changed={}, failed={}, msg={:?}", 
+                                task.task_id, 
+                                task_result.module_result.changed,
+                                task_result.module_result.failed,
+                                task_result.module_result.msg
+                            );
+                        }
                         task_results.push(task_result);
                     }
                     Err(e) => {
@@ -170,6 +211,10 @@ mod runtime {
                     return Err(anyhow::anyhow!("Unsupported module: {}", task.module));
                 }
             };
+            
+            if self.config.verbose {
+                debug!("Module {} raw result: {}", task.module, serde_json::to_string_pretty(&module_result_value).unwrap_or_else(|_| "Failed to serialize".to_string()));
+            }
             
             // Convert Value result to ModuleResult
             let module_result = ModuleResult {
@@ -382,6 +427,8 @@ struct RuntimeConfig {
     #[allow(dead_code)]
     #[serde(default)]
     pub max_retries: u32,
+    #[serde(default)]
+    pub verbose: bool,
 }
 
 mod duration_secs {

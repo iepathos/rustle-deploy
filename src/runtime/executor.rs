@@ -32,6 +32,8 @@ pub struct RuntimeConfig {
     #[serde(with = "serde_duration")]
     pub facts_cache_ttl: Duration,
     pub retry_policy: Option<RetryPolicyConfig>,
+    #[serde(default)]
+    pub verbose: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +64,7 @@ impl Default for RuntimeConfig {
             parallel_tasks: Some(4),
             facts_cache_ttl: Duration::from_secs(300), // 5 minutes
             retry_policy: None,
+            verbose: false,
         }
     }
 }

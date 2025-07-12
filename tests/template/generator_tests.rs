@@ -100,6 +100,7 @@ fn create_test_binary_deployment() -> BinaryDeploymentPlan {
         max_retries: Some(3),
         static_files: vec![],
         secrets: vec![],
+        verbose: Some(false),
     }
 }
 
