@@ -15,6 +15,7 @@ fn test_verbosity_configuration() {
     #[derive(Debug, Clone)]
     struct TestConfig {
         verbosity: u8,
+        #[allow(dead_code)]
         dry_run: bool,
     }
 
@@ -153,6 +154,7 @@ fn test_verbose_flag_combinations() {
     #[derive(Debug, Clone)]
     struct TestFlags {
         verbosity: u8,
+        #[allow(dead_code)]
         dry_run: bool,
         force_binary: bool,
         force_ssh: bool,
