@@ -1,5 +1,9 @@
 # Rustle Deploy
 
+[![CI](https://github.com/iepathos/rustle-deploy/actions/workflows/ci.yml/badge.svg)](https://github.com/iepathos/rustle-deploy/actions/workflows/ci.yml)
+[![Security](https://github.com/iepathos/rustle-deploy/actions/workflows/security.yml/badge.svg)](https://github.com/iepathos/rustle-deploy/actions/workflows/security.yml)
+[![Release](https://github.com/iepathos/rustle-deploy/actions/workflows/release.yml/badge.svg)](https://github.com/iepathos/rustle-deploy/actions/workflows/release.yml)
+
 A high-performance binary deployment tool for Rust that compiles execution plans into optimized, self-contained binaries and deploys them to remote hosts. Rustle Deploy bridges the gap between planning and execution by creating binaries with embedded execution data, eliminating network round-trips and providing 10x+ performance improvements over traditional SSH-based deployment approaches.
 
 ## 🚀 Overview
