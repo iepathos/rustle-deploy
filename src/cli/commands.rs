@@ -267,7 +267,7 @@ impl RustleDeployCliImpl {
         let (template, inventory) = self.parse_inputs(playbook, inventory).await?;
         
         let analysis = self.compiler.optimizer.analyze_optimization_potential(
-            &template.execution_plan,
+            &template.embedded_data.execution_plan,
             &self.capabilities,
             &inventory,
         ).await?;
@@ -292,7 +292,8 @@ impl RustleDeployCliImpl {
         // For now, return placeholder implementations
         
         // Create mock data using existing types
-        use crate::template::{EmbeddedData, TargetInfo, RuntimeConfig, EncryptedSecrets};
+        use crate::template::{EmbeddedData, TargetInfo, EncryptedSecrets};
+        use crate::runtime::RuntimeConfig;
         
         let template = GeneratedTemplate {
             template_id: "mock-template".to_string(),
@@ -304,7 +305,7 @@ impl RustleDeployCliImpl {
                 static_files: std::collections::HashMap::new(),
                 module_binaries: std::collections::HashMap::new(),
                 runtime_config: RuntimeConfig::default(),
-                secrets: EncryptedSecrets::default(),
+                secrets: EncryptedSecrets { encrypted_data: std::collections::HashMap::new() },
                 facts_cache: None,
             },
             cargo_toml: "[package]\nname = \"mock\"\nversion = \"0.1.0\"\n".to_string(),
@@ -312,9 +313,10 @@ impl RustleDeployCliImpl {
             target_info: TargetInfo {
                 target_triple: "x86_64-unknown-linux-gnu".to_string(),
                 platform: crate::types::Platform::Linux,
-                architecture: crate::types::Architecture::X86_64,
-                binary_extension: None,
-                requires_cross_compilation: false,
+                architecture: "x86_64".to_string(),
+                os_family: "unix".to_string(),
+                libc: Some("glibc".to_string()),
+                features: vec![],
             },
             compilation_flags: vec![],
             estimated_binary_size: 1024 * 1024, // 1MB
@@ -322,11 +324,11 @@ impl RustleDeployCliImpl {
         };
 
         let mut hosts = std::collections::HashMap::new();
-        hosts.insert("example-host".to_string(), InventoryHost {
+        hosts.insert("example-host".to_string(), crate::InventoryHost {
             name: "example-host".to_string(),
             address: Some("192.168.1.100".to_string()),
-            connection: ConnectionConfig {
-                method: ConnectionMethod::Ssh,
+            connection: crate::ConnectionConfig {
+                method: crate::ConnectionMethod::Ssh,
                 host: Some("192.168.1.100".to_string()),
                 port: Some(22),
                 username: None,
@@ -349,8 +351,8 @@ impl RustleDeployCliImpl {
             hosts,
             groups: std::collections::HashMap::new(),
             global_vars: std::collections::HashMap::new(),
-            metadata: InventoryMetadata {
-                format: InventoryFormat::Yaml,
+            metadata: crate::InventoryMetadata {
+                format: crate::InventoryFormat::Yaml,
                 source: playbook.to_string_lossy().to_string(),
                 parsed_at: chrono::Utc::now(),
                 host_count: 1,
@@ -365,14 +367,14 @@ impl RustleDeployCliImpl {
         &self,
         template: &GeneratedTemplate,
         inventory: &ParsedInventory,
-    ) -> Result<crate::compilation::optimizer::DeploymentPlan> {
-        use crate::compilation::zero_infra::{SshDeployment, FallbackReason};
+    ) -> Result<crate::compilation::DeploymentPlan> {
+        use crate::compilation::{SshDeployment, FallbackReason};
         
-        let mut plan = crate::compilation::optimizer::DeploymentPlan::new();
+        let mut plan = crate::compilation::DeploymentPlan::new();
         
         plan.ssh_deployments.push(SshDeployment {
-            execution_plan: template.execution_plan.clone(),
-            target_hosts: inventory.hosts.iter().map(|h| h.name.clone()).collect(),
+            execution_plan: template.embedded_data.execution_plan.clone(),
+            target_hosts: inventory.hosts.keys().cloned().collect(),
             fallback_reason: FallbackReason::UserPreference,
         });
         
@@ -382,7 +384,7 @@ impl RustleDeployCliImpl {
 
     async fn simulate_deployment(
         &self,
-        _plan: crate::compilation::optimizer::DeploymentPlan,
+        _plan: crate::compilation::DeploymentPlan,
     ) -> Result<DeploymentResult> {
         // Simulate deployment for dry run
         Ok(DeploymentResult {
@@ -397,7 +399,7 @@ impl RustleDeployCliImpl {
 
     async fn execute_deployment_plan(
         &self,
-        _plan: crate::compilation::optimizer::DeploymentPlan,
+        _plan: crate::compilation::DeploymentPlan,
         _options: &DeployOptions,
     ) -> Result<DeploymentResult> {
         // TODO: Implement actual deployment execution

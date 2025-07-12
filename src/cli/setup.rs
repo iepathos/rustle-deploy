@@ -1,4 +1,4 @@
-use crate::compilation::toolchain::ToolchainDetector;
+use crate::compilation::ToolchainDetector;
 use crate::deploy::Result;
 use tracing::{info, warn};
 
@@ -63,16 +63,16 @@ impl SetupWizard {
         let validation_result = self.detector.validate_toolchain().await?;
         
         match validation_result.overall_health {
-            crate::compilation::toolchain::HealthStatus::Excellent => {
+            crate::compilation::HealthStatus::Excellent => {
                 println!("✅ Excellent! Your setup is fully optimized for deployment.");
             }
-            crate::compilation::toolchain::HealthStatus::Good => {
+            crate::compilation::HealthStatus::Good => {
                 println!("👍 Good setup! You have most cross-compilation features available.");
             }
-            crate::compilation::toolchain::HealthStatus::Fair => {
+            crate::compilation::HealthStatus::Fair => {
                 println!("⚠️  Fair setup. Basic compilation works, but cross-compilation is limited.");
             }
-            crate::compilation::toolchain::HealthStatus::Poor => {
+            crate::compilation::HealthStatus::Poor => {
                 println!("❌ Poor setup. Essential components are missing.");
             }
         }
@@ -128,18 +128,18 @@ impl SetupWizard {
         Ok(())
     }
 
-    fn print_capability_summary(&self, capabilities: &crate::compilation::capabilities::CompilationCapabilities) {
+    fn print_capability_summary(&self, capabilities: &crate::compilation::CompilationCapabilities) {
         match capabilities.capability_level {
-            crate::compilation::capabilities::CapabilityLevel::Full => {
+            crate::compilation::CapabilityLevel::Full => {
                 println!("  🚀 Full capability: Zig + cargo-zigbuild available");
             }
-            crate::compilation::capabilities::CapabilityLevel::Limited => {
+            crate::compilation::CapabilityLevel::Limited => {
                 println!("  ⚡ Limited capability: Some cross-compilation available");
             }
-            crate::compilation::capabilities::CapabilityLevel::Minimal => {
+            crate::compilation::CapabilityLevel::Minimal => {
                 println!("  ⚠️  Minimal capability: Native compilation only");
             }
-            crate::compilation::capabilities::CapabilityLevel::Insufficient => {
+            crate::compilation::CapabilityLevel::Insufficient => {
                 println!("  ❌ Insufficient capability: Missing requirements");
             }
         }

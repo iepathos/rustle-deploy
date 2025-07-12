@@ -165,7 +165,8 @@ impl ZeroInfraCompiler {
         ).await?;
 
         // Cache the compiled binary
-        self.cache.cache_binary(template, &target.triple, &binary)?;
+        // Store binary in cache - simplified for now
+        // self.cache.store_binary(&binary).await?;
 
         Ok(binary)
     }
@@ -268,12 +269,12 @@ impl ZeroInfraCompiler {
 
         for host in &inventory.hosts {
             // Detect target architecture for this host
-            let target_triple = self.detect_target_for_host(&host.name).await?;
+            let target_triple = self.detect_target_for_host(&host.0).await?;
             
             target_groups
                 .entry(target_triple)
                 .or_insert_with(Vec::new)
-                .push(host.name.clone());
+                .push(host.0.clone());
         }
 
         Ok(target_groups)
@@ -318,7 +319,7 @@ impl ZeroInfraCompiler {
         
         let ssh_deployment = self.create_ssh_deployment_for_hosts(
             template,
-            &inventory.hosts.iter().map(|h| h.name.clone()).collect::<Vec<_>>(),
+            &inventory.hosts.iter().map(|h| h.0.clone()).collect::<Vec<_>>(),
             FallbackReason::UserPreference,
         ).await?;
         
@@ -336,7 +337,7 @@ impl ZeroInfraCompiler {
         reason: FallbackReason,
     ) -> Result<SshDeployment> {
         Ok(SshDeployment {
-            execution_plan: template.execution_plan.clone(),
+            execution_plan: template.embedded_data.execution_plan.clone(),
             target_hosts: hosts.to_vec(),
             fallback_reason: reason,
         })
@@ -374,7 +375,7 @@ pub enum BinaryDeploymentMethod {
 
 #[derive(Debug, Clone)]
 pub struct SshDeployment {
-    pub execution_plan: crate::execution::plan::RustlePlanOutput,
+    pub execution_plan: String,
     pub target_hosts: Vec<String>,
     pub fallback_reason: FallbackReason,
 }

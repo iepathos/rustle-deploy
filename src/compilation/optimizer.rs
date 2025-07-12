@@ -1,7 +1,7 @@
 use crate::compilation::capabilities::CompilationCapabilities;
 use crate::compilation::zero_infra::{BinaryDeployment, SshDeployment};
 use crate::deploy::{DeployError, Result};
-use crate::execution::RustlePlanOutput;
+use crate::execution::{RustlePlanOutput, TaskPlan};
 use crate::ParsedInventory;
 use std::collections::HashMap;
 use std::time::Duration;
@@ -230,7 +230,7 @@ impl DeploymentOptimizer {
     /// Determine if binary deployment should be used for specific tasks
     pub fn should_use_binary_deployment(
         &self,
-        tasks: &[crate::execution::plan::TaskPlan],
+        tasks: &[TaskPlan],
         capabilities: &CompilationCapabilities,
         target: &str,
     ) -> BinaryDeploymentDecision {
@@ -397,7 +397,7 @@ impl BinaryDeploymentAnalyzer {
         Self
     }
 
-    fn count_binary_compatible_tasks(&self, tasks: &[crate::execution::plan::TaskPlan]) -> Result<usize> {
+    fn count_binary_compatible_tasks(&self, tasks: &[TaskPlan]) -> Result<usize> {
         // Simplified compatibility check - in real implementation would analyze module types
         let compatible_count = tasks.iter()
             .filter(|task| self.is_task_binary_compatible(task))
@@ -406,7 +406,7 @@ impl BinaryDeploymentAnalyzer {
         Ok(compatible_count)
     }
 
-    fn is_task_binary_compatible(&self, _task: &crate::execution::plan::TaskPlan) -> bool {
+    fn is_task_binary_compatible(&self, _task: &TaskPlan) -> bool {
         // Simplified - assume most core modules are binary compatible
         // In real implementation, check against module registry
         true

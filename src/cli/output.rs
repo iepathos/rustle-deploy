@@ -1,5 +1,5 @@
 use crate::cli::commands::{CapabilityReport, ComponentStatus, ReadinessLevel, DeploymentResult};
-use crate::compilation::optimizer::OptimizationAnalysis;
+use crate::compilation::OptimizationAnalysis;
 use std::collections::HashMap;
 
 /// Print capability report in human-readable format
@@ -121,13 +121,13 @@ pub fn print_optimization_analysis(analysis: &OptimizationAnalysis) {
     // Strategy recommendation
     println!("💭 Recommended Strategy:");
     match analysis.recommended_strategy {
-        crate::compilation::optimizer::RecommendedStrategy::BinaryOnly => {
+        crate::compilation::RecommendedStrategy::BinaryOnly => {
             println!("  🎯 Binary Deployment Only - Maximum performance optimization");
         }
-        crate::compilation::optimizer::RecommendedStrategy::Hybrid => {
+        crate::compilation::RecommendedStrategy::Hybrid => {
             println!("  ⚖️  Hybrid Deployment - Mix of binary and SSH for optimal balance");
         }
-        crate::compilation::optimizer::RecommendedStrategy::SshOnly => {
+        crate::compilation::RecommendedStrategy::SshOnly => {
             println!("  📡 SSH Deployment Only - Low optimization potential or high overhead");
         }
     }
