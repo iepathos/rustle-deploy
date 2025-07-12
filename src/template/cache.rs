@@ -235,7 +235,7 @@ mod tests {
             build_script: None,
             target_info: TargetInfo {
                 target_triple: "x86_64-unknown-linux-gnu".to_string(),
-                platform: Platform::Linux,
+                platform: crate::types::platform::Platform::Linux,
                 architecture: "x86_64".to_string(),
                 os_family: "unix".to_string(),
                 libc: Some("glibc".to_string()),
