@@ -84,7 +84,7 @@
               "name": "Command task",
               "module": "command",
               "args": {
-                "_raw_params": "/bin/true"
+                "_raw_params": "/usr/bin/true"
               },
               "hosts": [
                 "localhost"
