@@ -20,6 +20,7 @@ Rustle Deploy revolutionizes infrastructure automation by:
 - 🚀 **Fast Deployment**: Parallel deployment to 100+ hosts in under 2 minutes
 - 🔄 **Incremental Builds**: Smart caching reduces rebuild time by 90%+
 - ✅ **Verification**: Automatic binary integrity checking and rollback support
+- 📋 **Binary Output Management**: Reliable binary copying from cache or compilation sources
 - 🔧 **Modular**: Integrates seamlessly with rustle-plan and rustle-exec pipeline
 
 ## 🚀 Quick Start
@@ -57,7 +58,8 @@ Rustle Deploy implements a sophisticated binary compilation and deployment pipel
 2. **Binary Compiler**: Cross-compiles Rust binaries with embedded execution data
 3. **Deployment Manager**: Handles parallel deployment, verification, and rollback
 4. **Compilation Cache**: Intelligent caching for incremental builds
-5. **Cross-Platform Support**: Target detection and toolchain management
+5. **Binary Output Management**: Reliable copying from cache, project, or memory sources
+6. **Cross-Platform Support**: Target detection and toolchain management
 
 ### Process Flow
 
@@ -318,6 +320,35 @@ cargo install cargo-zigbuild
 cargo zigbuild --release --target x86_64-unknown-linux-gnu
 ```
 
+## 📋 Binary Output Management
+
+The compilation pipeline now reliably handles binary output regardless of whether binaries come from cache or fresh compilation:
+
+```bash
+# Test compilation with reliable binary output
+cargo run --bin rustle-deploy plan.json --localhost-test
+
+# Specify output directory
+cargo run --bin rustle-deploy plan.json --output-dir ./binaries
+
+# Force fresh compilation (no cache)
+cargo run --bin rustle-deploy plan.json --rebuild
+```
+
+### Features
+
+- **Source Tracking**: Automatically tracks whether binaries come from cache, project build, or memory
+- **Strategy Pattern**: Multiple output strategies with automatic fallback
+- **Cross-Platform**: Proper binary naming (`.exe` on Windows) handled automatically
+- **Atomic Operations**: Prevents partial file corruption during copying
+- **Verification**: Copy integrity verification with size checks
+
+### CLI Examples
+
+- `--localhost-test` now works reliably without manual cache copying
+- `--output-dir` properly receives binaries from any source
+- Cross-platform binary naming (`.exe` on Windows) handled automatically
+
 ### Performance Optimization
 
 ```bash
@@ -413,7 +444,7 @@ tests/
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
+GPL-3.0 License - see [LICENSE](LICENSE) file for details.
 
 ---
 

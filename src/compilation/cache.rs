@@ -75,6 +75,9 @@ impl CompilationCache {
                         target_triple: entry.target_triple.clone(),
                         binary_path: entry.binary_path.clone(),
                         binary_data,
+                        effective_source: crate::compilation::BinarySource::Cache {
+                            cache_path: entry.binary_path.clone(),
+                        },
                         size: entry.size_bytes,
                         checksum: entry.checksum.clone(),
                         compilation_time: std::time::Duration::from_secs(0), // Cached, so no compilation time
@@ -151,6 +154,11 @@ impl CompilationCache {
         self.save_cache_index().await?;
 
         Ok(())
+    }
+
+    pub fn get_cache_path(&self, template_hash: &str, target: &str) -> PathBuf {
+        let cache_key = format!("{template_hash}:{target}");
+        self.cache_dir.join(&cache_key).join("binary")
     }
 
     async fn save_cache_index(&self) -> Result<()> {

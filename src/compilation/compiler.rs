@@ -115,12 +115,20 @@ pub struct CompiledBinary {
     pub target_triple: String,
     pub binary_path: PathBuf,
     pub binary_data: Vec<u8>,
+    pub effective_source: BinarySource,
     pub size: u64,
     pub checksum: String,
     pub compilation_time: Duration,
     pub optimization_level: OptimizationLevel,
     pub template_hash: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BinarySource {
+    FreshCompilation { project_path: PathBuf },
+    Cache { cache_path: PathBuf },
+    InMemory,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,6 +244,9 @@ impl BinaryCompiler {
             target_triple: target_spec.target_triple.clone(),
             binary_path: binary_path.clone(),
             binary_data: binary_data.clone(),
+            effective_source: BinarySource::FreshCompilation {
+                project_path: binary_path.clone(),
+            },
             size: binary_data.len() as u64,
             checksum,
             compilation_time: compilation_start.elapsed(),
@@ -280,6 +291,10 @@ impl BinaryCompiler {
 
     pub async fn cleanup_temp_projects(&self) -> Result<(), std::io::Error> {
         self.project_manager.cleanup_all_projects().await
+    }
+
+    pub fn cache(&self) -> &CompilationCache {
+        &self.cache
     }
 
     fn calculate_template_hash(&self, template: &GeneratedTemplate) -> Result<String> {

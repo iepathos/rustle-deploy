@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
 use rustle_deploy::compilation::{
-    BinaryCompiler, CompilerConfig, OptimizationLevel as CompilationOptimizationLevel,
-    TargetDetector, TargetSpecification,
+    BinaryCompiler, BinaryOutputManager, CompilerConfig,
+    OptimizationLevel as CompilationOptimizationLevel, TargetDetector, TargetSpecification,
 };
 use rustle_deploy::execution::rustle_plan::RustlePlanOutput;
 use rustle_deploy::template::{BinaryTemplateGenerator, TargetInfo, TemplateConfig};
@@ -482,19 +482,27 @@ async fn run_compilation(
     );
     info!("   Checksum: {}", compiled_binary.checksum);
 
-    // Copy binary to output directory
+    // Copy binary to output directory using BinaryOutputManager
     tokio::fs::create_dir_all(&cli.output_dir).await?;
     let output_path = cli
         .output_dir
         .join(format!("rustle-runner-{}", compiled_binary.target_triple));
 
-    tokio::fs::copy(&compiled_binary.binary_path, &output_path).await?;
-    info!("Binary saved to: {}", output_path.display());
+    let binary_manager = BinaryOutputManager::new(compiler.cache().clone());
+    let copy_result = binary_manager
+        .copy_to_output(&compiled_binary, &output_path)
+        .await?;
+
+    info!(
+        "Binary copied successfully: {} bytes in {:?}",
+        copy_result.bytes_copied, copy_result.copy_duration
+    );
+    info!("Binary saved to: {}", copy_result.output_path.display());
 
     // Test execution if localhost test mode
     if cli.localhost_test {
         info!("Testing binary execution on localhost");
-        test_binary_execution(&output_path).await?;
+        test_binary_execution(&copy_result.output_path).await?;
     }
 
     Ok(())
