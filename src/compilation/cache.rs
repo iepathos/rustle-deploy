@@ -75,13 +75,13 @@ impl CompilationCache {
                         target_triple: entry.target_triple.clone(),
                         binary_path: entry.binary_path.clone(),
                         binary_data,
-                        effective_source: crate::compilation::BinarySource::Cache {
+                        effective_source: crate::compilation::compiler::BinarySource::Cache {
                             cache_path: entry.binary_path.clone(),
                         },
                         size: entry.size_bytes,
                         checksum: entry.checksum.clone(),
                         compilation_time: std::time::Duration::from_secs(0), // Cached, so no compilation time
-                        optimization_level: crate::compilation::OptimizationLevel::Release, // Default for cached
+                        optimization_level: crate::compilation::compiler::OptimizationLevel::Release, // Default for cached
                         template_hash: entry.template_hash.clone(),
                         created_at: chrono::DateTime::from(entry.created_at),
                     });

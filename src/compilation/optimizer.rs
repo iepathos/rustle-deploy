@@ -121,14 +121,22 @@ impl DeploymentOptimizer {
     ) -> Result<OptimizationAnalysis> {
         info!("Analyzing optimization potential for execution plan");
 
-        let total_tasks = execution_plan.tasks.len();
+        let total_tasks = execution_plan.total_tasks as usize;
         if total_tasks == 0 {
             return Err(AnalysisError::InsufficientData("No tasks in execution plan".to_string()).into());
         }
 
         // Analyze binary compatibility of tasks
+        // Extract all tasks from the execution plan
+        let all_tasks: Vec<_> = execution_plan.plays.iter()
+            .flat_map(|play| play.batches.iter())
+            .flat_map(|batch| batch.tasks.iter())
+            .collect();
+        
+        // Convert collected references to owned values for the method call
+        let task_plans: Vec<crate::execution::TaskPlan> = all_tasks.into_iter().cloned().collect();
         let binary_compatible_tasks = self.binary_analyzer
-            .count_binary_compatible_tasks(&execution_plan.tasks)?;
+            .count_binary_compatible_tasks(&task_plans)?;
 
         // Group hosts by target architecture
         let target_breakdown = self.analyze_targets(inventory, capabilities).await?;
@@ -397,7 +405,7 @@ impl BinaryDeploymentAnalyzer {
         Self
     }
 
-    fn count_binary_compatible_tasks(&self, tasks: &[TaskPlan]) -> Result<usize> {
+    fn count_binary_compatible_tasks(&self, tasks: &[crate::execution::TaskPlan]) -> Result<usize> {
         // Simplified compatibility check - in real implementation would analyze module types
         let compatible_count = tasks.iter()
             .filter(|task| self.is_task_binary_compatible(task))
@@ -406,7 +414,7 @@ impl BinaryDeploymentAnalyzer {
         Ok(compatible_count)
     }
 
-    fn is_task_binary_compatible(&self, _task: &TaskPlan) -> bool {
+    fn is_task_binary_compatible(&self, _task: &crate::execution::TaskPlan) -> bool {
         // Simplified - assume most core modules are binary compatible
         // In real implementation, check against module registry
         true

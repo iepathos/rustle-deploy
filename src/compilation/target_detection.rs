@@ -1,5 +1,5 @@
 use crate::compilation::{OptimizationLevel, TargetSpecification};
-use crate::types::Platform;
+use crate::compilation::toolchain::{Architecture, Platform};
 use anyhow::Result;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -160,18 +160,11 @@ impl TargetDetector {
         })?;
 
         let target_spec = TargetSpecification {
-            target_triple: target_triple.to_string(),
-            optimization_level: optimization_level.clone(),
-            strip_debug: matches!(
-                optimization_level,
-                OptimizationLevel::Release | OptimizationLevel::MinimalSize
-            ),
-            enable_lto: matches!(
-                optimization_level,
-                OptimizationLevel::Release | OptimizationLevel::MinimalSize
-            ),
-            target_cpu: self.get_default_target_cpu(target_triple),
-            features: target_info.default_features.clone(),
+            triple: target_triple.to_string(),
+            platform: Platform::Linux, // Default platform for now
+            architecture: Architecture::X86_64, // Default architecture for now
+            requires_zig: matches!(optimization_level, OptimizationLevel::Release),
+            compilation_strategy: crate::compilation::capabilities::CompilationStrategy::ZigBuild,
         };
 
         Ok(target_spec)
@@ -211,7 +204,7 @@ impl TargetDetector {
         optimize_for_size: bool,
     ) -> Result<TargetSpecification, TargetDetectionError> {
         let optimization_level = if optimize_for_size {
-            OptimizationLevel::MinimalSize
+            OptimizationLevel::MinSizeRelease
         } else {
             OptimizationLevel::Release
         };

@@ -237,7 +237,7 @@ pub struct TargetSpecification {
     pub compilation_strategy: crate::compilation::capabilities::CompilationStrategy,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Platform {
     Linux,
     MacOS,

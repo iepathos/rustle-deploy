@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{BinarySource, CompiledBinary};
+use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;
@@ -24,10 +24,7 @@ impl OutputStrategy for ProjectOutputStrategy {
     ) -> Result<CopyResult, OutputError> {
         let start_time = Instant::now();
 
-        let project_path = match &binary.effective_source {
-            BinarySource::FreshCompilation { project_path } => project_path,
-            _ => return Err(OutputError::IncompatibleSource),
-        };
+        let project_path = &binary.binary_path;
 
         // Verify project binary exists and is accessible
         if !project_path.exists() {

@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{BinarySource, CompiledBinary};
+use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;

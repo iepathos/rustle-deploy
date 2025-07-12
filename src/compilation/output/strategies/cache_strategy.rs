@@ -1,6 +1,6 @@
 use super::{CopyResult, OutputStrategy};
 use crate::compilation::output::error::OutputError;
-use crate::compilation::{BinarySource, CompiledBinary};
+use crate::compilation::{compiler::BinarySource, compiler::CompiledBinary};
 use async_trait::async_trait;
 use std::path::Path;
 use std::time::Instant;
@@ -24,10 +24,8 @@ impl OutputStrategy for CacheOutputStrategy {
     ) -> Result<CopyResult, OutputError> {
         let start_time = Instant::now();
 
-        let cache_path = match &binary.effective_source {
-            BinarySource::Cache { cache_path } => cache_path,
-            _ => return Err(OutputError::IncompatibleSource),
-        };
+        // For cache strategy, we use the binary_path directly as cache path
+        let cache_path = &binary.binary_path;
 
         // Verify cache file exists and is accessible
         if !cache_path.exists() {

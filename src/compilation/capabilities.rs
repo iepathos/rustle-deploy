@@ -336,7 +336,7 @@ fn get_native_target() -> &'static str {
 }
 
 /// Targets that are well-supported by Zig cross-compilation
-const ZIG_SUPPORTED_TARGETS: &[&str] = &[
+pub const ZIG_SUPPORTED_TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnu",
     "aarch64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",

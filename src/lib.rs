@@ -7,7 +7,7 @@
 
 pub mod binary;
 // pub mod cli;  // Temporarily disabled to fix compilation
-// pub mod compilation;  // Temporarily disabled to fix compilation
+pub mod compilation;
 pub mod compiler;
 pub mod deploy;
 pub mod execution;
