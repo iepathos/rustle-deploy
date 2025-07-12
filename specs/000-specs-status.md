@@ -22,6 +22,8 @@ This document tracks the status of all specification documents in the project.
 | Spec | Feature | Status |
 |------|---------|--------|
 | 110 | End-to-End Testing Framework | ⬜ Planned |
+| 120 | Binary Output Management | ⬜ Planned |
+| 130 | Module Parameter Compatibility | ⬜ Planned |
 
 ## Notes
 
