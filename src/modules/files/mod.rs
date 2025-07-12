@@ -10,6 +10,7 @@ pub mod copy;
 pub mod file;
 pub mod stat;
 pub mod template;
+pub mod template_engine;
 
 // Utility modules
 pub mod platform;

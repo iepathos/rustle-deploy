@@ -1,8 +1,6 @@
 //! Template module for processing templates with variable substitution
 
 use async_trait::async_trait;
-use handlebars::{Context, Handlebars, Helper, HelperResult, Output, RenderContext};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -18,6 +16,9 @@ use super::utils::{
     atomic::AtomicWriter, backup::create_backup, ownership::set_ownership,
     permissions::set_permissions,
 };
+
+// Import the advanced template processing components
+use super::template_engine::{AdvancedTemplateProcessor, TemplateError};
 
 /// Template module arguments
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -106,9 +107,9 @@ impl TemplateArgs {
     }
 }
 
-/// Template processor with Handlebars
+/// Template processor with advanced Jinja2 compatibility
 pub struct TemplateProcessor {
-    handlebars: Handlebars<'static>,
+    advanced_processor: AdvancedTemplateProcessor,
 }
 
 impl Default for TemplateProcessor {
@@ -119,110 +120,20 @@ impl Default for TemplateProcessor {
 
 impl TemplateProcessor {
     pub fn new() -> Self {
-        let mut handlebars = Handlebars::new();
-        handlebars.set_strict_mode(false); // Less strict for compatibility
+        let advanced_processor = AdvancedTemplateProcessor::new()
+            .expect("Failed to initialize AdvancedTemplateProcessor");
 
-        // Register compatibility helpers for Jinja2-like syntax
-        handlebars.register_helper("default", Box::new(default_helper));
-        handlebars.register_helper("quote", Box::new(quote_helper));
-
-        Self { handlebars }
+        Self { advanced_processor }
     }
 
     pub fn render_template(
         &self,
         template_content: &str,
         variables: &serde_json::Value,
-    ) -> Result<String, handlebars::RenderError> {
-        // Convert Jinja2-like syntax to Handlebars before rendering
-        let converted_template = self.convert_template_syntax(template_content);
-        self.handlebars
-            .render_template(&converted_template, variables)
+    ) -> Result<String, TemplateError> {
+        self.advanced_processor
+            .render_template(template_content, variables)
     }
-
-    fn convert_template_syntax(&self, template: &str) -> String {
-        let mut converted = template.to_string();
-
-        // Convert {{ var | default('value') }} to {{default var 'value'}}
-        if let Ok(default_pattern) = Regex::new(r"\{\{\s*(\w+)\s*\|\s*default\('([^']*)'\)\s*\}\}")
-        {
-            converted = default_pattern
-                .replace_all(&converted, "{{default $1 '$2'}}")
-                .to_string();
-        }
-
-        // Convert {{ var | default(value) }} to {{default var value}}
-        if let Ok(default_numeric_pattern) =
-            Regex::new(r"\{\{\s*(\w+)\s*\|\s*default\(([^)]*)\)\s*\}\}")
-        {
-            converted = default_numeric_pattern
-                .replace_all(&converted, "{{default $1 $2}}")
-                .to_string();
-        }
-
-        // Convert conditionals if needed
-        // {{ var if condition else default }} -> {{#if condition}}{{var}}{{else}}{{default}}{{/if}}
-        // This is more complex and would need additional parsing
-
-        converted
-    }
-}
-
-// Handlebars helper for default values
-fn default_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _rc: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    let value = h.param(0).and_then(|v| v.value().as_str());
-    let default_val = h
-        .param(1)
-        .map(|v| {
-            if let Some(s) = v.value().as_str() {
-                s.to_string()
-            } else if let Some(n) = v.value().as_u64() {
-                format!("{n}")
-            } else if let Some(b) = v.value().as_bool() {
-                if b {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                }
-            } else {
-                "".to_string()
-            }
-        })
-        .unwrap_or_default();
-
-    let result = if let Some(val) = value {
-        if val.is_empty() {
-            &default_val
-        } else {
-            val
-        }
-    } else {
-        &default_val
-    };
-
-    out.write(result)?;
-    Ok(())
-}
-
-// Handlebars helper for quoting values
-fn quote_helper(
-    h: &Helper,
-    _: &Handlebars,
-    _: &Context,
-    _rc: &mut RenderContext,
-    out: &mut dyn Output,
-) -> HelperResult {
-    if let Some(value) = h.param(0) {
-        let quoted = format!("\"{}\"", value.value());
-        out.write(&quoted)?;
-    }
-    Ok(())
 }
 
 /// Template module implementation
