@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2024-01-01T00:00:00Z",
+    "rustle_plan_version": "1.0.0",
+    "plan_id": "ansible-demo-plan-001", 
+    "description": "Demo plan showcasing Ansible features",
+    "author": "rustle-team",
+    "tags": ["ansible", "demo", "facts", "templates", "files"]
+  },
+  "tasks": [
+    {
+      "id": "gather-facts",
+      "name": "Gather system facts",
+      "task_type": "Command",
+      "module": "setup",
+      "args": {
+        "gather_subset": ["all"]
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 30,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "create-config",
+      "name": "Deploy configuration from template",
+      "task_type": "Template",
+      "module": "template",
+      "args": {
+        "src": "config.j2",
+        "dest": "/tmp/app.conf",
+        "variables": {
+          "app_name": "RustleDemo",
+          "platform": "{{ ansible_system }}"
+        }
+      },
+      "dependencies": ["gather-facts"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 10,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "copy-file",
+      "name": "Copy application files",
+      "task_type": "Copy",
+      "module": "copy",
+      "args": {
+        "src": "app/",
+        "dest": "/opt/rustle/",
+        "mode": "0755"
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 60,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    }
+  ],
+  "inventory": {
+    "format": "Json",
+    "source": {
+      "Inline": {
+        "content": "{}"
+      }
+    },
+    "groups": {
+      "all": {
+        "hosts": ["test-host"],
+        "variables": {},
+        "children": []
+      }
+    },
+    "hosts": {
+      "test-host": {
+        "address": "test.example.com",
+        "connection": {
+          "method": "Ssh",
+          "username": "deploy",
+          "password": null,
+          "key_file": "/etc/deploy/id_rsa",
+          "port": 22,
+          "timeout": 30
+        },
+        "variables": {},
+        "target_triple": "x86_64-unknown-linux-gnu"
+      }
+    },
+    "variables": {}
+  },
+  "strategy": "Linear",
+  "facts_template": {
+    "global_facts": ["hostname", "architecture"],
+    "host_facts": ["memory", "disk"],
+    "custom_facts": {}
+  },
+  "deployment_config": {
+    "target_path": "/tmp/rustle-runner",
+    "backup_previous": true,
+    "verify_deployment": true,
+    "cleanup_on_success": true,
+    "deployment_timeout": 1800
+  },
+  "modules": [
+    {
+      "name": "package",
+      "source": "Builtin",
+      "version": null,
+      "checksum": null,
+      "dependencies": [],
+      "static_link": true
+    }
+  ]
+}

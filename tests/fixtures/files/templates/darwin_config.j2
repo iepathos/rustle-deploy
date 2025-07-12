@@ -1,0 +1,77 @@
+# macOS System Configuration for Rustle Deploy
+# Generated for {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+[Service]
+Type=launchd
+{% if use_launchd %}
+# LaunchDaemon configuration
+BundleIdentifier={{ bundle_id }}
+Label={{ bundle_id }}.service
+ProgramPath=/usr/local/bin/rustle-service
+RunAtLoad=true
+KeepAlive=true
+
+# Resource limits
+SoftResourceLimits:
+  NumberOfFiles: 8192
+  {% if ansible_memtotal_mb > 8192 %}
+  MemoryLimit: 4294967296
+  {% else %}
+  MemoryLimit: {{ (ansible_memtotal_mb * 1024 * 1024 * 0.5) | int }}
+  {% endif %}
+
+# Environment
+EnvironmentVariables:
+  RUSTLE_HOME: /usr/local/var/rustle
+  RUSTLE_LOG_DIR: /usr/local/var/log/rustle
+{% endif %}
+
+[Logging]
+LogLevel=info
+LogFile=/usr/local/var/log/rustle/service.log
+MaxLogSize=100M
+LogRotate=7
+UseOSLog=true
+
+[Network]
+BindAddress=0.0.0.0
+Port=8080
+{% if ansible_all_ipv6_addresses %}
+EnableIPv6=true
+BindAddressIPv6=::
+{% else %}
+EnableIPv6=false
+{% endif %}
+
+[Performance]
+WorkerProcesses={{ ansible_processor_cores }}
+MaxConnections={{ ansible_processor_cores * 500 }}
+{% if ansible_processor_cores >= 8 %}
+UseGrandCentralDispatch=true
+DispatchQueues={{ ansible_processor_cores }}
+{% endif %}
+{% if ansible_memtotal_mb > 16384 %}
+CacheSize=2048M
+{% elif ansible_memtotal_mb > 8192 %}
+CacheSize=1024M
+{% else %}
+CacheSize=512M
+{% endif %}
+
+[Security]
+User=_rustle
+Group=_rustle
+Umask=0027
+UseKeychain=true
+KeychainPath=/Library/Keychains/rustle.keychain
+
+[macOS]
+{% if ansible_processor == "arm64" %}
+Architecture=AppleSilicon
+UseNativeOptimizations=true
+{% else %}
+Architecture=Intel
+{% endif %}
+MinimumOSVersion=11.0
+UseSandbox=true
+SandboxProfile=rustle-service

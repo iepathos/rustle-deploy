@@ -1,0 +1,68 @@
+# Linux System Configuration for Rustle Deploy
+# Generated for {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+[Service]
+Type=simple
+{% if use_systemd %}
+# Systemd service configuration
+User={{ service_user }}
+Group={{ service_user }}
+WorkingDirectory=/opt/rustle
+ExecStart=/opt/rustle/bin/rustle-service
+Restart=always
+RestartSec=5
+
+# Resource limits based on system capabilities
+{% if ansible_memtotal_mb > 8192 %}
+LimitNOFILE=65536
+MemoryLimit=4G
+{% else %}
+LimitNOFILE=16384
+MemoryLimit={{ (ansible_memtotal_mb * 0.5) | int }}M
+{% endif %}
+
+# CPU affinity based on core count
+{% if ansible_processor_cores > 4 %}
+CPUAffinity=0-{{ ansible_processor_cores - 1 }}
+{% endif %}
+{% else %}
+# SysV init configuration
+DAEMON=/opt/rustle/bin/rustle-service
+PIDFILE=/var/run/rustle.pid
+USER={{ service_user }}
+{% endif %}
+
+[Logging]
+LogLevel=info
+LogFile=/var/log/rustle/service.log
+MaxLogSize=100M
+LogRotate=7
+
+[Network]
+BindAddress=0.0.0.0
+Port=8080
+{% if ansible_default_ipv6.address is defined %}
+EnableIPv6=true
+BindAddressIPv6={{ ansible_default_ipv6.address }}
+{% else %}
+EnableIPv6=false
+{% endif %}
+
+[Performance]
+WorkerProcesses={{ ansible_processor_cores }}
+MaxConnections={{ ansible_processor_cores * 1000 }}
+{% if ansible_memtotal_mb > 16384 %}
+CacheSize=2048M
+{% elif ansible_memtotal_mb > 8192 %}
+CacheSize=1024M
+{% else %}
+CacheSize=512M
+{% endif %}
+
+[Security]
+User={{ service_user }}
+Group={{ service_user }}
+Umask=0027
+{% if ansible_selinux.status == "enabled" %}
+SELinuxContext=system_u:system_r:rustle_t:s0
+{% endif %}

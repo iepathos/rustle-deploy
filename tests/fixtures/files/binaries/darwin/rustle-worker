@@ -1,0 +1,3 @@
+#!/bin/bash
+# Dummy Darwin binary for testing
+echo "Rustle Worker (macOS) - Test Binary"

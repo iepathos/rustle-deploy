@@ -1,0 +1,171 @@
+#!/bin/bash
+# Deployment Script for Rustle Service
+# Generated for {{ platform }} {{ architecture }}
+# System Resources: {{ cpu_cores }} cores, {{ memory_mb }} MB RAM
+
+set -euo pipefail
+
+# Configuration
+SERVICE_NAME="rustle-service"
+DEPLOY_DIR="/opt/rustle"
+LOG_FILE="/var/log/rustle/deploy.log"
+
+# Platform-specific settings
+{% if platform == "Linux" %}
+INIT_SYSTEM="systemd"
+SERVICE_USER="rustle"
+{% elif platform == "Darwin" %}
+INIT_SYSTEM="launchd"
+SERVICE_USER="_rustle"
+{% else %}
+INIT_SYSTEM="custom"
+SERVICE_USER="rustle"
+{% endif %}
+
+# Performance tuning based on system resources
+{% if optimize_for_memory %}
+echo "System has limited memory ({{ memory_mb }} MB), enabling memory optimizations..."
+export RUSTLE_MEMORY_LIMIT="{{ (memory_mb * 0.6) | int }}M"
+export RUSTLE_ENABLE_SWAP=true
+export RUSTLE_COMPACT_MODE=true
+{% else %}
+echo "System has sufficient memory ({{ memory_mb }} MB), using standard configuration..."
+export RUSTLE_MEMORY_LIMIT="{{ (memory_mb * 0.7) | int }}M"
+export RUSTLE_ENABLE_CACHE=true
+export RUSTLE_CACHE_SIZE="{{ (memory_mb * 0.2) | int }}M"
+{% endif %}
+
+# CPU optimization
+{% if cpu_cores >= 8 %}
+echo "Detected {{ cpu_cores }} CPU cores, enabling parallel processing..."
+export RUSTLE_WORKER_THREADS={{ cpu_cores - 1 }}
+export RUSTLE_ENABLE_PARALLEL=true
+{% elif cpu_cores >= 4 %}
+echo "Detected {{ cpu_cores }} CPU cores, using moderate parallelism..."
+export RUSTLE_WORKER_THREADS={{ cpu_cores }}
+{% else %}
+echo "Limited CPU cores ({{ cpu_cores }}), optimizing for efficiency..."
+export RUSTLE_WORKER_THREADS=2
+export RUSTLE_LOW_RESOURCE_MODE=true
+{% endif %}
+
+# Architecture-specific optimizations
+{% if architecture == "x86_64" %}
+export RUSTLE_USE_AVX2=true
+export RUSTLE_ARCH_OPTS="-march=x86-64-v2"
+{% elif architecture == "aarch64" or architecture == "arm64" %}
+export RUSTLE_USE_NEON=true
+export RUSTLE_ARCH_OPTS="-march=armv8-a"
+{% endif %}
+
+echo "Starting deployment process..."
+echo "Platform: {{ platform }}"
+echo "Architecture: {{ architecture }}"
+echo "CPU Cores: {{ cpu_cores }}"
+echo "Memory: {{ memory_mb }} MB"
+echo "Deployment Directory: $DEPLOY_DIR"
+
+# Create necessary directories
+mkdir -p "$DEPLOY_DIR"/{bin,conf,data,logs}
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Start logging
+exec 1> >(tee -a "$LOG_FILE")
+exec 2>&1
+
+echo "[$(date)] Deployment started"
+
+# Copy binaries
+echo "Copying service binaries..."
+cp -f ./bin/* "$DEPLOY_DIR/bin/"
+chmod +x "$DEPLOY_DIR/bin/"*
+
+# Copy configuration
+echo "Installing configuration..."
+cp -f ./system.conf "$DEPLOY_DIR/conf/"
+
+# Set up service user
+{% if platform == "Linux" %}
+if ! id -u $SERVICE_USER >/dev/null 2>&1; then
+    echo "Creating service user: $SERVICE_USER"
+    useradd -r -s /bin/false -d "$DEPLOY_DIR" -c "Rustle Service" $SERVICE_USER
+fi
+{% elif platform == "Darwin" %}
+if ! dscl . -read /Users/$SERVICE_USER >/dev/null 2>&1; then
+    echo "Creating service user: $SERVICE_USER"
+    # macOS user creation commands would go here
+fi
+{% endif %}
+
+# Set permissions
+echo "Setting permissions..."
+chown -R $SERVICE_USER:$SERVICE_USER "$DEPLOY_DIR"
+chmod 750 "$DEPLOY_DIR"
+chmod 640 "$DEPLOY_DIR/conf/"*
+
+# Install service
+echo "Installing service..."
+{% if platform == "Linux" and init_system == "systemd" %}
+cat > /etc/systemd/system/$SERVICE_NAME.service <<EOF
+[Unit]
+Description=Rustle Service
+After=network.target
+
+[Service]
+Type=simple
+User=$SERVICE_USER
+Group=$SERVICE_USER
+WorkingDirectory=$DEPLOY_DIR
+ExecStart=$DEPLOY_DIR/bin/$SERVICE_NAME
+Restart=always
+RestartSec=5
+Environment="RUSTLE_CONFIG=$DEPLOY_DIR/conf/system.conf"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable $SERVICE_NAME
+{% elif platform == "Darwin" and init_system == "launchd" %}
+cat > /Library/LaunchDaemons/{{ bundle_id }}.plist <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{{ bundle_id }}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$DEPLOY_DIR/bin/$SERVICE_NAME</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>$DEPLOY_DIR</string>
+    <key>UserName</key>
+    <string>$SERVICE_USER</string>
+</dict>
+</plist>
+EOF
+
+launchctl load /Library/LaunchDaemons/{{ bundle_id }}.plist
+{% endif %}
+
+echo "[$(date)] Deployment completed successfully"
+echo "Service installed as: $SERVICE_NAME"
+echo "Configuration: $DEPLOY_DIR/conf/system.conf"
+echo "Logs: $DEPLOY_DIR/logs/"
+
+# Start service
+echo "Starting service..."
+{% if platform == "Linux" and init_system == "systemd" %}
+systemctl start $SERVICE_NAME
+systemctl status $SERVICE_NAME
+{% elif platform == "Darwin" and init_system == "launchd" %}
+launchctl start {{ bundle_id }}
+{% endif %}
+
+echo "Deployment complete!"

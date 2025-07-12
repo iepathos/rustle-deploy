@@ -1,0 +1,3 @@
+#!/bin/bash
+# Dummy Linux binary for testing
+echo "Rustle Worker (Linux) - Test Binary"

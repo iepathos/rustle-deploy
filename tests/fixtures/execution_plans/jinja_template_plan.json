@@ -1,0 +1,150 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2024-01-15T10:00:00Z",
+    "rustle_plan_version": "1.0.0",
+    "plan_id": "jinja-template-plan-001",
+    "description": "Execution plan for Jinja2 template operations",
+    "author": "rustle-team",
+    "tags": ["ansible", "jinja2", "templates", "configuration"]
+  },
+  "tasks": [
+    {
+      "id": "create-dir-001",
+      "name": "Create template output directory",
+      "task_type": "Copy",
+      "module": "file",
+      "args": {
+        "path": "/tmp/rustle_template_test",
+        "state": "directory",
+        "mode": "0755"
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 10,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "template-config-001",
+      "name": "Deploy configuration from template",
+      "task_type": "Template",
+      "module": "template",
+      "args": {
+        "src": "tests/fixtures/files/templates/config.yaml.j2",
+        "dest": "/tmp/rustle_template_test/app_config.yaml",
+        "mode": "0644",
+        "variables": {
+          "app_name": "RustleApp",
+          "environment": "production",
+          "debug": false,
+          "port": 8080,
+          "features": ["auth", "api", "metrics"],
+          "database": {
+            "host": "db.example.com",
+            "port": 5432,
+            "name": "rustle_db"
+          }
+        }
+      },
+      "dependencies": ["create-dir-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 15,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "template-script-001",
+      "name": "Generate startup script with conditions",
+      "task_type": "Template",
+      "module": "template",
+      "args": {
+        "src": "tests/fixtures/files/templates/startup_script.sh.j2",
+        "dest": "/tmp/rustle_template_test/startup.sh",
+        "mode": "0755",
+        "variables": {
+          "service_name": "rustle-service",
+          "enable_monitoring": true,
+          "log_level": "info",
+          "workers": 4,
+          "memory_limit": "2G"
+        }
+      },
+      "dependencies": ["create-dir-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 10,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "verify-template-001",
+      "name": "Verify template output",
+      "task_type": {"Custom": {"module_name": "stat"}},
+      "module": "stat",
+      "args": {
+        "path": "/tmp/rustle_template_test/app_config.yaml"
+      },
+      "dependencies": ["template-config-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 5,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    }
+  ],
+  "inventory": {
+    "format": "Json",
+    "source": {
+      "Inline": {
+        "content": "{}"
+      }
+    },
+    "groups": {
+      "all": {
+        "hosts": ["template-test-host"],
+        "variables": {},
+        "children": []
+      }
+    },
+    "hosts": {
+      "template-test-host": {
+        "address": "localhost",
+        "connection": {
+          "method": "Local"
+        },
+        "variables": {
+          "base_dir": "/tmp/rustle_template_test",
+          "template_engine": "jinja2"
+        }
+      }
+    }
+  },
+  "strategy": "Linear",
+  "facts_template": {
+    "global_facts": ["hostname", "platform"],
+    "host_facts": ["user", "home"]
+  },
+  "deployment": {
+    "target_platform": "multi",
+    "binary_name": "jinja_template_deploy",
+    "compression": true,
+    "strip_debug": true
+  },
+  "module_definitions": {
+    "file": {
+      "type": "native",
+      "implementation": "builtin"
+    },
+    "template": {
+      "type": "native",
+      "implementation": "builtin"
+    },
+    "stat": {
+      "type": "native",
+      "implementation": "builtin"
+    }
+  }
+}

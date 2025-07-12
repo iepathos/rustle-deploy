@@ -1,0 +1,118 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2024-01-15T10:00:00Z",
+    "rustle_plan_version": "1.0.0",
+    "plan_id": "system-facts-plan-001",
+    "description": "Execution plan for system facts gathering",
+    "author": "rustle-team",
+    "tags": ["ansible", "facts", "setup", "system"]
+  },
+  "tasks": [
+    {
+      "id": "gather-facts-001",
+      "name": "Gather system facts",
+      "task_type": "Command",
+      "module": "setup",
+      "args": {
+        "gather_subset": ["all"],
+        "gather_timeout": 10
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 30,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "display-facts-001",
+      "name": "Display gathered facts",
+      "task_type": {"Custom": {"module_name": "debug"}},
+      "module": "debug",
+      "args": {
+        "msg": "System: {{ ansible_system }}, OS Family: {{ ansible_os_family }}, Architecture: {{ ansible_architecture }}"
+      },
+      "dependencies": ["gather-facts-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 5,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "conditional-task-001",
+      "name": "Task for Linux systems only",
+      "task_type": {"Custom": {"module_name": "debug"}},
+      "module": "debug",
+      "args": {
+        "msg": "This is a Linux system with {{ ansible_processor_cores }} CPU cores"
+      },
+      "dependencies": ["gather-facts-001"],
+      "conditions": [
+        {
+          "variable": "ansible_system",
+          "operator": "Equals",
+          "value": "Linux"
+        }
+      ],
+      "target_hosts": "All",
+      "timeout": 5,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    }
+  ],
+  "inventory": {
+    "format": "Json",
+    "source": {
+      "Inline": {
+        "content": "{}"
+      }
+    },
+    "groups": {
+      "all": {
+        "hosts": ["test-host-1"],
+        "variables": {},
+        "children": []
+      }
+    },
+    "hosts": {
+      "test-host-1": {
+        "address": "localhost",
+        "connection": {
+          "method": "Local"
+        },
+        "variables": {
+          "test_var": "test_value"
+        }
+      }
+    }
+  },
+  "strategy": "Linear",
+  "facts_template": {
+    "global_facts": ["hostname", "architecture", "platform", "cpus"],
+    "host_facts": ["memory", "disk", "network"]
+  },
+  "deployment_config": {
+    "cache_dir": "/tmp/rustle_cache",
+    "output_dir": "/tmp/rustle_output",
+    "parallel_jobs": 4,
+    "default_timeout_secs": 300,
+    "verify_deployments": true,
+    "compression": true,
+    "strip_symbols": true,
+    "binary_size_limit_mb": 100
+  },
+  "modules": [
+    {
+      "name": "setup",
+      "module_type": "Builtin",
+      "implementation": "setup"
+    },
+    {
+      "name": "debug",
+      "module_type": "Builtin", 
+      "implementation": "debug"
+    }
+  ]
+}

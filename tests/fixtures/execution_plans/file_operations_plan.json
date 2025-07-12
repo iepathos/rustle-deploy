@@ -1,0 +1,154 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created_at": "2024-01-15T10:00:00Z",
+    "rustle_plan_version": "1.0.0",
+    "plan_id": "file-operations-plan-001",
+    "description": "Execution plan for comprehensive file operations",
+    "author": "rustle-team",
+    "tags": ["ansible", "files", "copy", "permissions"]
+  },
+  "tasks": [
+    {
+      "id": "create-base-dir-001",
+      "name": "Create base directory structure",
+      "task_type": "Copy",
+      "module": "file",
+      "args": {
+        "path": "/tmp/rustle_file_test",
+        "state": "directory",
+        "mode": "0755",
+        "recurse": true
+      },
+      "dependencies": [],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 10,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "create-subdirs-001",
+      "name": "Create subdirectories",
+      "task_type": "Copy",
+      "module": "file",
+      "args": {
+        "path": "/tmp/rustle_file_test/{{ item }}",
+        "state": "directory",
+        "mode": "0750",
+        "loop": ["config", "data", "logs", "backups"]
+      },
+      "dependencies": ["create-base-dir-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 10,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "copy-config-001",
+      "name": "Copy configuration file",
+      "task_type": "Copy",
+      "module": "copy",
+      "args": {
+        "src": "tests/fixtures/files/test_files/sample.conf",
+        "dest": "/tmp/rustle_file_test/config/app.conf",
+        "mode": "0644",
+        "backup": true
+      },
+      "dependencies": ["create-subdirs-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 15,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "create-log-file-001",
+      "name": "Create empty log file",
+      "task_type": "Copy",
+      "module": "file",
+      "args": {
+        "path": "/tmp/rustle_file_test/logs/app.log",
+        "state": "touch",
+        "mode": "0664"
+      },
+      "dependencies": ["create-subdirs-001"],
+      "conditions": [],
+      "target_hosts": "All",
+      "timeout": 5,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    },
+    {
+      "id": "create-symlink-001",
+      "name": "Create symbolic link",
+      "task_type": "Copy",
+      "module": "file",
+      "args": {
+        "src": "/tmp/rustle_file_test/config/app.conf",
+        "dest": "/tmp/rustle_file_test/current.conf",
+        "state": "link"
+      },
+      "dependencies": ["copy-config-001"],
+      "conditions": [
+        {
+          "variable": "ansible_system",
+          "operator": "NotEquals",
+          "value": "Windows"
+        }
+      ],
+      "target_hosts": "All",
+      "timeout": 5,
+      "retry_policy": null,
+      "failure_policy": "Abort"
+    }
+  ],
+  "inventory": {
+    "format": "Json",
+    "source": {
+      "Inline": {
+        "content": "{}"
+      }
+    },
+    "groups": {
+      "all": {
+        "hosts": ["file-test-host"],
+        "variables": {},
+        "children": []
+      }
+    },
+    "hosts": {
+      "file-test-host": {
+        "address": "localhost",
+        "connection": {
+          "method": "Local"
+        },
+        "variables": {
+          "test_base_dir": "/tmp/rustle_file_test"
+        }
+      }
+    }
+  },
+  "strategy": "Linear",
+  "facts_template": {
+    "global_facts": ["hostname", "platform", "user"],
+    "host_facts": ["home", "pwd"]
+  },
+  "deployment": {
+    "target_platform": "multi",
+    "binary_name": "file_operations_deploy",
+    "compression": true,
+    "strip_debug": true
+  },
+  "module_definitions": {
+    "file": {
+      "type": "native",
+      "implementation": "builtin"
+    },
+    "copy": {
+      "type": "native",
+      "implementation": "builtin"
+    }
+  }
+}
