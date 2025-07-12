@@ -2,8 +2,9 @@
 name = "rustle-deploy"
 version = "0.1.0"
 edition = "2021"
+authors = ["Glen Baker <iepathos@gmail.com>"]
 description = "Specialized binary compiler and deployment manager for rustle execution plans"
-license = "MIT"
+license = "GPL-3.0"
 repository = "https://github.com/memento-mori/rustle-deploy"
 keywords = ["deployment", "compilation", "automation", "infrastructure"]
 categories = ["command-line-utilities", "development-tools"]
