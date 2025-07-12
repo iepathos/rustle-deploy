@@ -334,7 +334,6 @@ impl Default for TarHandler {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
 
     #[test]
     fn test_unsafe_path_detection() {

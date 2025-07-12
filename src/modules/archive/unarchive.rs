@@ -438,30 +438,42 @@ impl Default for UnarchiveModule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::TempDir;
+    use crate::modules::interface::ModuleArgs;
 
     #[tokio::test]
     async fn test_module_validation() {
         let module = UnarchiveModule::new();
 
         // Test valid args
-        let valid_args = serde_json::json!({
+        let valid_args_json = serde_json::json!({
             "src": "/path/to/archive.tar.gz",
             "dest": "/path/to/dest"
         });
+        let valid_args = ModuleArgs {
+            args: serde_json::from_value(valid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&valid_args).is_ok());
 
         // Test missing src
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "dest": "/path/to/dest"
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
 
         // Test empty src
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "src": "",
             "dest": "/path/to/dest"
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
     }
 

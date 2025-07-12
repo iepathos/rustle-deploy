@@ -585,31 +585,44 @@ impl Default for ArchiveModule {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modules::interface::ModuleArgs;
 
     #[test]
     fn test_module_validation() {
         let module = ArchiveModule::new();
 
         // Test valid args
-        let valid_args = serde_json::json!({
+        let valid_args_json = serde_json::json!({
             "path": ["/path/to/file1", "/path/to/file2"],
             "dest": "/path/to/archive.tar.gz"
         });
+        let valid_args = ModuleArgs {
+            args: serde_json::from_value(valid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&valid_args).is_ok());
 
         // Test empty path
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "path": [],
             "dest": "/path/to/archive.tar.gz"
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
 
         // Test invalid compression level
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "path": ["/path/to/file"],
             "dest": "/path/to/archive.tar.gz",
             "compression_level": 15
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
     }
 

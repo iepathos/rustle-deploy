@@ -181,7 +181,13 @@ pub mod utils {
             assert!(is_safe_path(Path::new("file.txt")));
             assert!(!is_safe_path(Path::new("../etc/passwd")));
             assert!(!is_safe_path(Path::new("/etc/passwd")));
+
+            // On Windows, backslashes are path separators, on Unix they're just regular characters
+            #[cfg(windows)]
             assert!(!is_safe_path(Path::new("..\\windows\\system32\\file")));
+
+            #[cfg(unix)]
+            assert!(is_safe_path(Path::new("..\\windows\\system32\\file"))); // Unix treats \ as a normal character
         }
 
         #[test]

@@ -647,37 +647,54 @@ impl Default for GitModule {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modules::interface::ModuleArgs;
 
     #[test]
     fn test_module_validation() {
         let module = GitModule::new();
 
         // Test valid args
-        let valid_args = serde_json::json!({
+        let valid_args_json = serde_json::json!({
             "repo": "https://github.com/user/repo.git",
             "dest": "/path/to/dest"
         });
+        let valid_args = ModuleArgs {
+            args: serde_json::from_value(valid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&valid_args).is_ok());
 
         // Test missing repo
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "dest": "/path/to/dest"
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
 
         // Test invalid URL
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "repo": "not-a-url",
             "dest": "/path/to/dest"
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
 
         // Test zero depth
-        let invalid_args = serde_json::json!({
+        let invalid_args_json = serde_json::json!({
             "repo": "https://github.com/user/repo.git",
             "dest": "/path/to/dest",
             "depth": 0
         });
+        let invalid_args = ModuleArgs {
+            args: serde_json::from_value(invalid_args_json).unwrap(),
+            special: crate::modules::interface::SpecialParameters::default(),
+        };
         assert!(module.validate_args(&invalid_args).is_err());
     }
 
