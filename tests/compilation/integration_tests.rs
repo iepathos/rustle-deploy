@@ -113,6 +113,36 @@ async fn test_cache_functionality() {
 }
 
 #[tokio_test::test]
+async fn test_file_operations_plan_compilation() {
+    // Test compilation of the file_operations_plan.json fixture
+    let temp_dir = TempDir::new().unwrap();
+    let cli_impl = RustleDeployCliImpl::new(Some(temp_dir.path().to_path_buf())).await.unwrap();
+    
+    // Load the fixture
+    let fixture_path = std::path::Path::new("tests/fixtures/execution_plans/file_operations_plan.json");
+    assert!(fixture_path.exists(), "file_operations_plan.json fixture must exist");
+    
+    let options = DeployOptions {
+        optimization_mode: OptimizationMode::Auto,
+        force_binary: false,
+        force_ssh: false,
+        verbosity: 0,
+        dry_run: false,
+        cache_binaries: true,
+        parallel_compilation: false,
+        timeout: 120, // Longer timeout for compilation
+        parallel_jobs: Some(1),
+    };
+    
+    // Test compile-only mode (which was failing before)
+    let result = cli_impl.execute_deployment(fixture_path, fixture_path, options).await;
+    assert!(result.is_ok(), "file_operations_plan.json compilation should succeed");
+    
+    let deployment_result = result.unwrap();
+    assert!(deployment_result.success, "Deployment should complete successfully");
+}
+
+#[tokio_test::test]
 async fn test_error_handling_invalid_inputs() {
     let temp_dir = TempDir::new().unwrap();
     let cli_impl = RustleDeployCliImpl::new(Some(temp_dir.path().to_path_buf())).await.unwrap();

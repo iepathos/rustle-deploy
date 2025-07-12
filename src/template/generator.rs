@@ -298,11 +298,36 @@ impl BinaryTemplateGenerator {
         execution_plan: &RustlePlanOutput,
         embedded_data: &EmbeddedData,
     ) -> Result<String, TemplateError> {
+        // Collect unique modules from the execution plan
+        let mut modules = std::collections::HashSet::new();
+        for play in &execution_plan.plays {
+            for batch in &play.batches {
+                for task in &batch.tasks {
+                    modules.insert(task.module.clone());
+                }
+            }
+            for handler in &play.handlers {
+                modules.insert(handler.module.clone());
+            }
+        }
+
+        // Convert to template data format
+        let modules_data: Vec<serde_json::Value> = modules
+            .iter()
+            .map(|module| {
+                serde_json::json!({
+                    "name": module,
+                    "normalized_name": module.replace(':', "_")
+                })
+            })
+            .collect();
+
         let template_data = serde_json::json!({
             "execution_plan": serde_json::to_string(&execution_plan)?,
             "runtime_config": serde_json::to_string(&embedded_data.runtime_config)?,
             "static_files": self.generate_static_file_declarations(&embedded_data.static_files)?,
             "module_implementations": self.generate_module_declarations(execution_plan)?,
+            "modules": modules_data,
             "total_tasks": execution_plan.total_tasks,
         });
 
@@ -600,6 +625,8 @@ impl BinaryTemplateGenerator {
             "package" => Ok(include_str!("../templates/modules/package.rs").to_string()),
             "service" => Ok(include_str!("../templates/modules/service.rs").to_string()),
             "debug" => Ok(include_str!("../templates/modules/debug.rs").to_string()),
+            "copy" => Ok(include_str!("../templates/modules/copy.rs").to_string()),
+            "file" => Ok(include_str!("../templates/modules/file.rs").to_string()),
             _ => {
                 // Generate a basic module wrapper for unknown modules
                 let module_template = r#"
@@ -607,16 +634,16 @@ use anyhow::Result;
 use serde_json::Value;
 use std::collections::HashMap;
 
-pub async fn execute(args: HashMap<String, Value>) -> Result<Value> {{
+pub async fn execute(args: HashMap<String, Value>) -> Result<Value> {
     // Module implementation for {module_name}
     // This is a placeholder implementation
     
-    Ok(serde_json::json!({{
+    Ok(serde_json::json!({
         "changed": false,
         "failed": false,
         "msg": "Module {module_name} executed successfully (placeholder)"
-    }}))
-}}
+    }))
+}
 "#;
                 Ok(module_template.replace("{module_name}", module_name))
             }

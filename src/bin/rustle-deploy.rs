@@ -479,23 +479,38 @@ async fn run_compilation(
             compiled_binary.compilation_time
         );
         info!("   Binary ID: {}", compiled_binary.binary_id);
+
+        // Binary output management - copy to output directory
+        tokio::fs::create_dir_all(&cli.output_dir).await?;
+        let output_path = cli.output_dir.join("rustle-runner");
+
+        // Write binary data to output directory
+        tokio::fs::write(&output_path, &compiled_binary.binary_data).await?;
+
+        // Make the binary executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&output_path)?.permissions();
+            perms.set_mode(0o755); // rwxr-xr-x
+            std::fs::set_permissions(&output_path, perms)?;
+        }
+
+        info!(
+            "✅ Binary copied to output directory: {}",
+            output_path.display()
+        );
     } else {
         info!("✅ Template generated successfully:");
         info!("   Target: {}", target_spec.target_triple);
         info!("   Template files: {}", template.source_files.len());
     }
-
-    // Binary output management
-    if cli.compile_only {
-        tokio::fs::create_dir_all(&cli.output_dir).await?;
-        let _output_path = cli.output_dir.join("rustle-runner");
-        // Binary is already compiled above and saved to the compilation cache
-        info!("Binary compilation completed. Check the compilation cache for the binary.");
-    }
     // let binary_manager = BinaryOutputManager::new(...);
     // let copy_result = binary_manager.copy_to_output(&compiled_binary, &output_path).await?;
 
-    info!("Output would be written to: {}", cli.output_dir.display());
+    if !cli.compile_only {
+        info!("Output would be written to: {}", cli.output_dir.display());
+    }
 
     // TODO: Make the binary executable and test execution
     // Currently disabled until compilation is working

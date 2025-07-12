@@ -11,6 +11,7 @@ use rustle_deploy::types::Platform;
 use chrono::Utc;
 use std::collections::HashMap;
 use std::time::Duration;
+use tempfile;
 
 fn create_test_execution_plan() -> RustlePlanOutput {
     RustlePlanOutput {
@@ -333,6 +334,121 @@ async fn test_template_optimization() {
     // Verify optimization flags are added
     assert!(optimized_template.compilation_flags.contains(&"-C".to_string()));
     assert!(optimized_template.compilation_flags.contains(&"target-cpu=native".to_string()));
+}
+
+#[tokio::test]
+async fn test_file_operations_template_generation() {
+    // Test that file and copy modules can be generated correctly
+    let config = TemplateConfig::default();
+    let generator = BinaryTemplateGenerator::new(config).expect("Failed to create generator");
+    
+    let modules = vec![
+        rustle_deploy::execution::plan::ModuleSpec {
+            name: "file".to_string(),
+            source: rustle_deploy::execution::plan::ModuleSource::Builtin,
+            version: Some("1.0.0".to_string()),
+            checksum: None,
+            dependencies: vec![],
+            static_link: false,
+        },
+        rustle_deploy::execution::plan::ModuleSpec {
+            name: "copy".to_string(),
+            source: rustle_deploy::execution::plan::ModuleSource::Builtin,
+            version: Some("1.0.0".to_string()),
+            checksum: None,
+            dependencies: vec![],
+            static_link: false,
+        },
+    ];
+    
+    let implementations = generator
+        .generate_module_implementations(&modules, &Platform::Linux)
+        .expect("Failed to generate module implementations");
+    
+    // Verify file and copy modules are generated
+    assert!(implementations.contains_key("modules/file.rs"));
+    assert!(implementations.contains_key("modules/copy.rs"));
+    assert!(implementations.contains_key("modules/mod.rs"));
+    
+    // Verify file module implementation
+    let file_impl = implementations.get("modules/file.rs").unwrap();
+    assert!(file_impl.contains("pub async fn execute"));
+    assert!(file_impl.contains("HashMap<String, Value>"));
+    assert!(file_impl.contains("state"));
+    assert!(file_impl.contains("directory"));
+    assert!(file_impl.contains("fs::create_dir"));
+    
+    // Verify copy module implementation
+    let copy_impl = implementations.get("modules/copy.rs").unwrap();
+    assert!(copy_impl.contains("pub async fn execute"));
+    assert!(copy_impl.contains("HashMap<String, Value>"));
+    assert!(copy_impl.contains("src"));
+    assert!(copy_impl.contains("dest"));
+    assert!(copy_impl.contains("fs::copy"));
+    
+    // Verify mod.rs declares the modules
+    let mod_rs = implementations.get("modules/mod.rs").unwrap();
+    assert!(mod_rs.contains("pub mod file;"));
+    assert!(mod_rs.contains("pub mod copy;"));
+}
+
+#[tokio::test]
+async fn test_file_operations_plan_fixture_template() {
+    // Test template generation from the actual file_operations_plan.json fixture
+    let config = TemplateConfig::default();
+    let generator = BinaryTemplateGenerator::new(config).expect("Failed to create generator");
+    
+    // Load the fixture
+    let fixture_path = "tests/fixtures/execution_plans/file_operations_plan.json";
+    let fixture_content = std::fs::read_to_string(fixture_path)
+        .expect("Failed to read file_operations_plan.json fixture");
+    
+    let rustle_plan: RustlePlanOutput = serde_json::from_str(&fixture_content)
+        .expect("Failed to parse file_operations_plan.json");
+    
+    // Extract the binary deployment plan
+    assert!(!rustle_plan.binary_deployments.is_empty(), "Fixture should have binary deployments");
+    let binary_deployment = &rustle_plan.binary_deployments[0];
+    
+    let target_info = TargetInfo {
+        target_triple: "x86_64-unknown-linux-gnu".to_string(),
+        platform: Platform::Linux,
+        architecture: "x86_64".to_string(),
+        os_family: "unix".to_string(),
+        libc: Some("glibc".to_string()),
+        features: vec![],
+    };
+    
+    // Generate template
+    let template = generator
+        .generate_binary_template(&rustle_plan, binary_deployment, &target_info)
+        .await
+        .expect("Failed to generate template from file_operations_plan.json");
+    
+    // Verify template structure
+    assert!(!template.template_id.is_empty());
+    assert!(template.source_files.contains_key(&std::path::PathBuf::from("src/main.rs")));
+    assert!(!template.cargo_toml.is_empty());
+    
+    // Verify that the main.rs file contains references to file and copy modules
+    let main_rs = template.source_files.get(&std::path::PathBuf::from("src/main.rs")).unwrap();
+    assert!(main_rs.contains("modules::file::execute"));
+    assert!(main_rs.contains("modules::copy::execute"));
+    
+    // Verify module files are generated
+    assert!(template.source_files.contains_key(&std::path::PathBuf::from("src/modules/file.rs")));
+    assert!(template.source_files.contains_key(&std::path::PathBuf::from("src/modules/copy.rs")));
+    
+    // Verify the template can be written to disk without syntax errors
+    let temp_dir = tempfile::TempDir::new().unwrap();
+    template.write_to_directory(temp_dir.path()).await
+        .expect("Failed to write template to directory");
+    
+    // Verify Cargo.toml and main.rs exist
+    assert!(temp_dir.path().join("Cargo.toml").exists());
+    assert!(temp_dir.path().join("src/main.rs").exists());
+    assert!(temp_dir.path().join("src/modules/file.rs").exists());
+    assert!(temp_dir.path().join("src/modules/copy.rs").exists());
 }
 
 #[tokio::test]

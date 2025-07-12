@@ -196,19 +196,11 @@ mod runtime {
             
             // Execute module with mapped parameters
             let module_result_value = match task.module.as_str() {
-                "command" | "shell" => {
-                    modules::command::execute(mapped_args).await?
+{{#each modules}}
+                "{{name}}" => {
+                    modules::{{normalized_name}}::execute(mapped_args).await?
                 }
-                "package" => {
-                    modules::package::execute(mapped_args).await?
-                }
-                "service" => {
-                    // Service module not available in binary deployment mode
-                    return Err(anyhow::anyhow!("Service module not supported in binary deployment mode"));
-                }
-                "debug" => {
-                    modules::debug::execute(mapped_args).await?
-                }
+{{/each}}
                 _ => {
                     return Err(anyhow::anyhow!("Unsupported module: {}", task.module));
                 }
