@@ -4,7 +4,7 @@ use crate::compilation::output::strategies::{
 };
 use crate::compilation::{CompilationCache, CompiledBinary};
 use std::path::{Path, PathBuf};
-use tracing::{info, warn};
+use tracing::{debug, info};
 
 pub struct BinaryOutputManager {
     #[allow(dead_code)]
@@ -57,7 +57,7 @@ impl BinaryOutputManager {
                     return Ok(result);
                 }
                 Err(e) => {
-                    warn!("Strategy {} failed: {}", strategy.name(), e);
+                    debug!("Strategy {} failed: {}", strategy.name(), e);
                     last_error = Some(e);
                 }
             }

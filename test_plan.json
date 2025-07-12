@@ -1,0 +1,1 @@
+{"plays":[{"play_id":"play-0","batches":[{"batch_id":"binary-batch","tasks":[{"task_id":"task_0","module":"debug","args":{"msg":"hello world"}},{"task_id":"task_1","module":"package","args":{"name":"git","state":"present"}},{"task_id":"task_2","module":"command","args":{"_raw_params":"/bin/true"}}]}]}],"total_tasks":3}

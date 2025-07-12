@@ -171,7 +171,7 @@ impl StateManager {
         };
 
         let failed = !self.execution_state.failed_tasks.is_empty();
-        let success = !failed && self.execution_state.completed_tasks > 0;
+        let success = !failed;
 
         let errors = self
             .task_results
@@ -191,5 +191,144 @@ impl StateManager {
             duration,
             errors,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use std::time::Duration;
+
+    #[test]
+    fn test_execution_success_calculation() {
+        let mut state_manager = StateManager::new("test-execution".to_string(), 3);
+
+        // Add successful task results
+        let task_results = vec![
+            TaskResult {
+                task_id: "task_0".to_string(),
+                name: "Debug Task".to_string(),
+                status: TaskStatus::Success,
+                changed: false,
+                failed: false,
+                skipped: false,
+                output: serde_json::json!({"msg": "hello world"}),
+                stdout: None,
+                stderr: None,
+                start_time: Utc::now(),
+                end_time: Utc::now(),
+                duration: Duration::from_millis(10),
+                error: None,
+            },
+            TaskResult {
+                task_id: "task_1".to_string(),
+                name: "Package Task".to_string(),
+                status: TaskStatus::Success,
+                changed: false,
+                failed: false,
+                skipped: false,
+                output: serde_json::json!({"changed": false}),
+                stdout: None,
+                stderr: None,
+                start_time: Utc::now(),
+                end_time: Utc::now(),
+                duration: Duration::from_millis(100),
+                error: None,
+            },
+            TaskResult {
+                task_id: "task_2".to_string(),
+                name: "Command Task".to_string(),
+                status: TaskStatus::Success,
+                changed: true,
+                failed: false,
+                skipped: false,
+                output: serde_json::json!({"rc": 0}),
+                stdout: Some("success".to_string()),
+                stderr: None,
+                start_time: Utc::now(),
+                end_time: Utc::now(),
+                duration: Duration::from_millis(50),
+                error: None,
+            },
+        ];
+
+        for result in task_results {
+            state_manager.add_task_result(result);
+        }
+
+        let execution_result = state_manager.build_execution_result(Utc::now());
+
+        // The key assertions: if all tasks complete successfully (even if some don't change anything),
+        // the overall execution should be marked as successful, not failed
+        assert!(
+            !execution_result.failed,
+            "Execution should not be marked as failed when all tasks complete successfully"
+        );
+        assert!(
+            execution_result.success,
+            "Execution should be marked as successful when all tasks complete successfully"
+        );
+        assert_eq!(execution_result.summary.total_tasks, 3);
+        assert_eq!(execution_result.summary.completed_tasks, 3);
+        assert_eq!(execution_result.summary.failed_tasks, 0);
+        assert_eq!(execution_result.summary.changed_tasks, 1);
+    }
+
+    #[test]
+    fn test_execution_failure_calculation() {
+        let mut state_manager = StateManager::new("test-execution".to_string(), 2);
+
+        // Add one successful and one failed task
+        let successful_task = TaskResult {
+            task_id: "task_0".to_string(),
+            name: "Successful Task".to_string(),
+            status: TaskStatus::Success,
+            changed: false,
+            failed: false,
+            skipped: false,
+            output: serde_json::json!({"msg": "success"}),
+            stdout: None,
+            stderr: None,
+            start_time: Utc::now(),
+            end_time: Utc::now(),
+            duration: Duration::from_millis(10),
+            error: None,
+        };
+
+        let failed_task = TaskResult {
+            task_id: "task_1".to_string(),
+            name: "Failed Task".to_string(),
+            status: TaskStatus::Failed,
+            changed: false,
+            failed: true,
+            skipped: false,
+            output: serde_json::json!({"msg": "failed"}),
+            stdout: None,
+            stderr: Some("error".to_string()),
+            start_time: Utc::now(),
+            end_time: Utc::now(),
+            duration: Duration::from_millis(5),
+            error: Some("Task failed".to_string()),
+        };
+
+        state_manager.add_task_result(successful_task);
+        state_manager.add_task_result(failed_task);
+
+        let execution_result = state_manager.build_execution_result(Utc::now());
+
+        // When there are failed tasks, execution should be marked as failed
+        assert!(
+            execution_result.failed,
+            "Execution should be marked as failed when tasks fail"
+        );
+        assert!(
+            !execution_result.success,
+            "Execution should not be marked as successful when tasks fail"
+        );
+        assert_eq!(execution_result.summary.total_tasks, 2);
+        assert_eq!(execution_result.summary.completed_tasks, 2); // Both completed, even if one failed
+        assert_eq!(execution_result.summary.failed_tasks, 1);
+        assert_eq!(execution_result.summary.changed_tasks, 0);
     }
 }
