@@ -58,9 +58,9 @@ impl CargoBackend {
     fn optimization_level_to_profile(&self, level: &OptimizationLevel) -> &'static str {
         match level {
             OptimizationLevel::Debug => "dev",
-            OptimizationLevel::Release => "release",
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => "release",
             OptimizationLevel::ReleaseWithDebugInfo => "release",
-            OptimizationLevel::MinSize => "release", // Will use additional flags
+            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => "release", // Will use additional flags
         }
     }
 

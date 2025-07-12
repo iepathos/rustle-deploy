@@ -72,7 +72,7 @@ impl BinaryOptimizer {
                 flags.push("-C opt-level=0".to_string());
                 flags.push("-C debuginfo=2".to_string());
             }
-            OptimizationLevel::Release => {
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => {
                 flags.push("-C opt-level=3".to_string());
                 flags.push("-C debuginfo=0".to_string());
             }
@@ -80,7 +80,7 @@ impl BinaryOptimizer {
                 flags.push("-C opt-level=3".to_string());
                 flags.push("-C debuginfo=2".to_string());
             }
-            OptimizationLevel::MinSize => {
+            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => {
                 flags.push("-C opt-level=z".to_string());
                 flags.push("-C panic=abort".to_string());
                 flags.push("-C codegen-units=1".to_string());
@@ -131,9 +131,9 @@ impl BinaryOptimizer {
     ) -> u64 {
         let base_size = match target_spec.optimization_level {
             OptimizationLevel::Debug => 15_000_000, // ~15MB base for debug
-            OptimizationLevel::Release => 8_000_000, // ~8MB base for release
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => 8_000_000, // ~8MB base for release
             OptimizationLevel::ReleaseWithDebugInfo => 12_000_000, // ~12MB with debug info
-            OptimizationLevel::MinSize => 4_000_000, // ~4MB minimal size
+            OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease | OptimizationLevel::MinimalSize => 4_000_000, // ~4MB minimal size
         };
 
         let mut estimated_size = base_size + embedded_size;
@@ -169,24 +169,15 @@ impl BinaryOptimizer {
             OptimizationLevel::Release | OptimizationLevel::MinSize
         );
 
-        TargetSpecification {
-            target_triple: target_triple.to_string(),
-            optimization_level,
-            platform_info: crate::types::compilation::PlatformInfo {
-                architecture: "x86_64".to_string(), // Should be detected from target_triple
-                os_family: "unix".to_string(),
-                libc: Some("gnu".to_string()),
-                features: Vec::new(),
-            },
-            compilation_options: CompilationOptions {
-                strip_debug: !requirements.debug_info_needed,
-                enable_lto,
-                static_linking: requirements.static_linking_preferred,
-                compression: requirements.minimize_transfer_size,
-                custom_features: requirements.required_features.clone(),
-                target_cpu: requirements.target_cpu.clone(),
-            },
-        }
+        let mut target_spec = TargetSpecification::new(target_triple);
+        target_spec.optimization_level = optimization_level;
+        target_spec.enable_lto = enable_lto;
+        target_spec.strip_debug = !requirements.debug_info_needed;
+        target_spec.compilation_options.static_linking = requirements.static_linking_preferred;
+        target_spec.compilation_options.compression = requirements.minimize_transfer_size;
+        target_spec.compilation_options.custom_features = requirements.required_features.clone();
+        target_spec.compilation_options.target_cpu = requirements.target_cpu.clone();
+        target_spec
     }
 
     // Private helper methods

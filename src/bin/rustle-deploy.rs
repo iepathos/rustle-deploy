@@ -479,7 +479,7 @@ async fn run_compilation(
     // Binary output management
     if cli.compile_only {
         tokio::fs::create_dir_all(&cli.output_dir).await?;
-        let output_path = cli.output_dir.join("rustle-runner");
+        let _output_path = cli.output_dir.join("rustle-runner");
         // Binary is already compiled above and saved to the compilation cache
         info!("Binary compilation completed. Check the compilation cache for the binary.");
     }

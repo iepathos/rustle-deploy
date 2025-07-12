@@ -594,10 +594,10 @@ impl ProcessExecutor {
         optimization: &OptimizationLevel,
     ) {
         match optimization {
-            OptimizationLevel::Release => {
+            OptimizationLevel::Release | OptimizationLevel::Aggressive => {
                 cmd.arg("--release");
             }
-            OptimizationLevel::MinimalSize | OptimizationLevel::MinSize => {
+            OptimizationLevel::MinimalSize | OptimizationLevel::MinSize | OptimizationLevel::MinSizeRelease => {
                 cmd.arg("--release");
                 self.append_rustflags(cmd, "-C opt-level=z -C lto=fat -C strip=symbols");
             }
