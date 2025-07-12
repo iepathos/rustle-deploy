@@ -30,9 +30,7 @@ impl ServiceModule {
         // Register platform-specific service managers
         #[cfg(target_os = "linux")]
         {
-            use crate::modules::system::service_managers::{
-                InitServiceManager, SystemdServiceManager,
-            };
+            use crate::modules::system::service_managers::SystemdServiceManager;
             service_managers.insert(Platform::Linux, Box::new(SystemdServiceManager::new()));
         }
 

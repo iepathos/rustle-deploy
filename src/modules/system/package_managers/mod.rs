@@ -37,9 +37,11 @@ pub struct Package {
 pub mod apt;
 pub mod brew;
 pub mod chocolatey;
+pub mod dnf;
 pub mod yum;
 
 pub use apt::AptPackageManager;
 pub use brew::BrewPackageManager;
 pub use chocolatey::ChocolateyPackageManager;
+pub use dnf::DnfPackageManager;
 pub use yum::YumPackageManager;

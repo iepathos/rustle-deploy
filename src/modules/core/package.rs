@@ -12,6 +12,16 @@ use crate::modules::{
     system::package_managers::{PackageManager, PackageState},
 };
 
+#[derive(Debug, PartialEq)]
+enum LinuxDistribution {
+    Debian,
+    Ubuntu,
+    RedHat,
+    CentOS,
+    Fedora,
+    Unknown,
+}
+
 /// Package module - manages system packages
 pub struct PackageModule {
     package_managers: HashMap<Platform, Box<dyn PackageManager>>,
@@ -30,8 +40,28 @@ impl PackageModule {
         // Register platform-specific package managers
         #[cfg(target_os = "linux")]
         {
-            use crate::modules::system::package_managers::{AptPackageManager, YumPackageManager};
-            package_managers.insert(Platform::Linux, Box::new(AptPackageManager::new()));
+            use crate::modules::system::package_managers::{AptPackageManager, DnfPackageManager, YumPackageManager};
+            
+            // Detect Linux distribution to choose appropriate package manager
+            let package_manager: Box<dyn PackageManager> = match Self::detect_linux_distribution() {
+                LinuxDistribution::Debian | LinuxDistribution::Ubuntu => {
+                    Box::new(AptPackageManager::new())
+                }
+                LinuxDistribution::RedHat | LinuxDistribution::CentOS | LinuxDistribution::Fedora => {
+                    // Prefer DNF over YUM if available
+                    if Self::is_dnf_available() {
+                        Box::new(DnfPackageManager::new())
+                    } else {
+                        Box::new(YumPackageManager::new())
+                    }
+                }
+                LinuxDistribution::Unknown => {
+                    // Default to APT for unknown distributions
+                    Box::new(AptPackageManager::new())
+                }
+            };
+            
+            package_managers.insert(Platform::Linux, package_manager);
         }
 
         #[cfg(target_os = "macos")]
@@ -47,6 +77,52 @@ impl PackageModule {
         }
 
         Self { package_managers }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn detect_linux_distribution() -> LinuxDistribution {
+        // Try to read /etc/os-release first (most modern distributions)
+        if let Ok(contents) = std::fs::read_to_string("/etc/os-release") {
+            if contents.contains("ID=debian") || contents.contains("ID=\"debian\"") {
+                return LinuxDistribution::Debian;
+            }
+            if contents.contains("ID=ubuntu") || contents.contains("ID=\"ubuntu\"") {
+                return LinuxDistribution::Ubuntu;
+            }
+            if contents.contains("ID=fedora") || contents.contains("ID=\"fedora\"") {
+                return LinuxDistribution::Fedora;
+            }
+            if contents.contains("ID=centos") || contents.contains("ID=\"centos\"") {
+                return LinuxDistribution::CentOS;
+            }
+            if contents.contains("ID=rhel") || contents.contains("ID=\"rhel\"") || 
+               contents.contains("ID=redhat") || contents.contains("ID=\"redhat\"") {
+                return LinuxDistribution::RedHat;
+            }
+        }
+
+        // Fallback to legacy methods
+        if std::path::Path::new("/etc/debian_version").exists() {
+            LinuxDistribution::Debian
+        } else if std::path::Path::new("/etc/redhat-release").exists() {
+            LinuxDistribution::RedHat
+        } else if std::path::Path::new("/etc/fedora-release").exists() {
+            LinuxDistribution::Fedora
+        } else if std::path::Path::new("/etc/centos-release").exists() {
+            LinuxDistribution::CentOS
+        } else {
+            LinuxDistribution::Unknown
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn is_dnf_available() -> bool {
+        // Check if DNF command is available
+        std::process::Command::new("which")
+            .arg("dnf")
+            .output()
+            .map(|output| output.status.success())
+            .unwrap_or(false)
     }
 }
 
