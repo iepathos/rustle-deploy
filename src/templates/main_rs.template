@@ -11,6 +11,7 @@ mod embedded_data {
     
     #[allow(dead_code)]
     pub fn get_static_files() -> std::collections::HashMap<&'static str, &'static [u8]> {
+        #[allow(unused_mut)]
         let mut files = std::collections::HashMap::new();
 {{static_files}}
         files

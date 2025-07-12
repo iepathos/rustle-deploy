@@ -364,6 +364,17 @@ impl BinaryTemplateGenerator {
             );
         }
 
+        // Generate modules/mod.rs file to declare all modules
+        let mut mod_declarations = vec!["pub mod parameter_mapping;".to_string()];
+
+        for module in modules {
+            let module_name = module.name.replace(':', "_");
+            mod_declarations.push(format!("pub mod {};", module_name));
+        }
+
+        let mod_file_content = mod_declarations.join("\n");
+        implementations.insert("modules/mod.rs".to_string(), mod_file_content);
+
         Ok(implementations)
     }
 
