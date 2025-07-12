@@ -140,7 +140,7 @@ async fn test_multi_environment_deployment() {
 
     for environment in environments {
         // Create environment-specific directory
-        let env_dir = env.temp_path(&format!("config/{}", environment));
+        let env_dir = env.temp_path(&format!("config/{environment}"));
         let dir_args = FileTestBuilder::new()
             .path(env_dir.to_string_lossy())
             .state(FileState::Directory)
@@ -153,9 +153,9 @@ async fn test_multi_environment_deployment() {
         // Deploy environment-specific configuration
         let template_content = fixtures.get_template("config").unwrap();
         let template_path =
-            env.create_test_file(&format!("{}_config.j2", environment), template_content);
+            env.create_test_file(&format!("{environment}_config.j2"), template_content);
 
-        let config_file = env.temp_path(&format!("config/{}/app.conf", environment));
+        let config_file = env.temp_path(&format!("config/{environment}/app.conf"));
 
         let mut vars = TestFixtures::config_template_vars();
         vars.insert(
@@ -175,7 +175,7 @@ async fn test_multi_environment_deployment() {
 
         // Verify content is environment-specific
         let content = env
-            .read_file(&format!("config/{}/app.conf", environment))
+            .read_file(&format!("config/{environment}/app.conf"))
             .unwrap();
         assert!(content.contains("test_app"));
     }
@@ -250,7 +250,7 @@ level = "{{ log_level | default('info') }}"
 
     // Step 4: Validate all configurations exist and have correct properties
     for config_file in &["main.conf", "logging.conf"] {
-        let file_path = env.temp_path(&format!("etc/myapp/{}", config_file));
+        let file_path = env.temp_path(&format!("etc/myapp/{config_file}"));
 
         let stat_args = StatTestBuilder::new()
             .path(file_path.to_string_lossy())
@@ -301,8 +301,8 @@ async fn test_file_synchronization_workflow() {
     let files_to_sync = vec!["file1.txt", "file2.txt", "subdir/file3.txt"];
 
     for file in files_to_sync {
-        let src_file = env.temp_path(&format!("source/{}", file));
-        let dest_file = env.temp_path(&format!("destination/{}", file));
+        let src_file = env.temp_path(&format!("source/{file}"));
+        let dest_file = env.temp_path(&format!("destination/{file}"));
 
         // Create destination subdirectory if needed
         if let Some(parent) = dest_file.parent() {
@@ -330,7 +330,7 @@ async fn test_file_synchronization_workflow() {
 
     // Verify synchronization with stat
     for file in &["file1.txt", "file2.txt", "subdir/file3.txt"] {
-        let dest_file = env.temp_path(&format!("destination/{}", file));
+        let dest_file = env.temp_path(&format!("destination/{file}"));
 
         let stat_args = StatTestBuilder::new()
             .path(dest_file.to_string_lossy())

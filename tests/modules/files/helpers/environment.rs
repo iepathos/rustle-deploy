@@ -26,6 +26,12 @@ impl Clone for TestEnvironment {
     }
 }
 
+impl Default for TestEnvironment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestEnvironment {
     /// Get access to the execution context
     pub fn context(&self) -> &ExecutionContext {
@@ -64,8 +70,10 @@ impl TestEnvironment {
 
     /// Create a test environment configured for a specific platform
     pub fn with_platform_config(platform: &str) -> Self {
-        let mut config = TestConfig::default();
-        config.temp_dir_prefix = format!("rustle_test_{}_", platform);
+        let config = TestConfig {
+            temp_dir_prefix: format!("rustle_test_{platform}_"),
+            ..Default::default()
+        };
         Self::with_config(config)
     }
 

@@ -96,7 +96,7 @@ async fn test_cross_platform_line_endings() {
     let env = TestEnvironment::new();
 
     // Test with different line ending styles
-    let contents = vec![
+    let contents = [
         "unix\nline\nendings\n",          // Unix style
         "windows\r\nline\r\nendings\r\n", // Windows style
         "old_mac\rline\rendings\r",       // Old Mac style
@@ -104,10 +104,10 @@ async fn test_cross_platform_line_endings() {
     ];
 
     for (i, content) in contents.iter().enumerate() {
-        let file_path = env.create_test_file(&format!("line_endings_{}.txt", i), content);
+        let file_path = env.create_test_file(&format!("line_endings_{i}.txt"), content);
 
         // Copy to another location
-        let dest_path = env.temp_path(&format!("copy_line_endings_{}.txt", i));
+        let dest_path = env.temp_path(&format!("copy_line_endings_{i}.txt"));
 
         let args = CopyTestBuilder::new()
             .src(file_path.to_string_lossy())
@@ -118,9 +118,9 @@ async fn test_cross_platform_line_endings() {
         assert!(!result.failed);
 
         // Verify content is preserved byte-for-byte
-        let original = env.read_file(&format!("line_endings_{}.txt", i)).unwrap();
+        let original = env.read_file(&format!("line_endings_{i}.txt")).unwrap();
         let copied = env
-            .read_file(&format!("copy_line_endings_{}.txt", i))
+            .read_file(&format!("copy_line_endings_{i}.txt"))
             .unwrap();
         assert_eq!(original, copied);
     }

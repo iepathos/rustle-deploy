@@ -10,5 +10,4 @@ async fn test_file_basic() {
 
     // This is a placeholder test to ensure the infrastructure works
     // Full file property tests would be implemented here
-    assert!(true);
 }

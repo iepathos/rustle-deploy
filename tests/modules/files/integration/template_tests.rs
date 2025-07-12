@@ -380,7 +380,7 @@ Item {{@index}}: {{this}}
     let output_path = env.temp_path("large_output.txt");
 
     // Create large array of items
-    let items: Vec<String> = (0..1000).map(|i| format!("value_{}", i)).collect();
+    let items: Vec<String> = (0..1000).map(|i| format!("value_{i}")).collect();
 
     let args = TemplateTestBuilder::new()
         .src(template_path.to_string_lossy())

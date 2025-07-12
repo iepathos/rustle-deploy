@@ -23,7 +23,7 @@ impl Default for TestConfig {
             temp_dir_prefix: "rustle_test_".to_string(),
             preserve_temp_files: std::env::var("RUSTLE_TEST_PRESERVE_TEMP").is_ok(),
             max_file_size: 100 * 1024 * 1024,
-            enable_property_tests: !std::env::var("RUSTLE_TEST_SKIP_PROPERTY").is_ok(),
+            enable_property_tests: std::env::var("RUSTLE_TEST_SKIP_PROPERTY").is_err(),
             property_test_cases: 100,
         }
     }

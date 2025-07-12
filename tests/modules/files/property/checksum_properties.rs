@@ -10,5 +10,4 @@ async fn test_checksum_basic() {
 
     // This is a placeholder test to ensure the infrastructure works
     // Full checksum property tests would be implemented here
-    assert!(true);
 }
