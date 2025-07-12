@@ -660,11 +660,11 @@ impl ProcessExecutor {
                         && !file_name.contains(".rcgu.")
                     {
                         // Check if it's an executable (not a library or object file)
-                        if let Ok(metadata) = std::fs::metadata(&path) {
+                        if let Ok(_metadata) = std::fs::metadata(&path) {
                             #[cfg(unix)]
                             {
                                 use std::os::unix::fs::PermissionsExt;
-                                if metadata.permissions().mode() & 0o111 != 0 {
+                                if _metadata.permissions().mode() & 0o111 != 0 {
                                     return Ok(path);
                                 }
                             }

@@ -6,28 +6,28 @@ use super::FileError;
 
 /// Set file owner and group
 pub async fn set_ownership(
-    path: &Path,
-    owner: Option<&str>,
-    group: Option<&str>,
+    _path: &Path,
+    _owner: Option<&str>,
+    _group: Option<&str>,
 ) -> Result<(), FileError> {
     #[cfg(unix)]
     {
         use nix::unistd::chown;
 
-        let uid = if let Some(owner) = owner {
+        let uid = if let Some(owner) = _owner {
             Some(resolve_user(owner)?)
         } else {
             None
         };
 
-        let gid = if let Some(group) = group {
+        let gid = if let Some(group) = _group {
             Some(resolve_group(group)?)
         } else {
             None
         };
 
-        chown(path, uid, gid).map_err(|_e| FileError::PermissionDenied {
-            path: path.display().to_string(),
+        chown(_path, uid, gid).map_err(|_e| FileError::PermissionDenied {
+            path: _path.display().to_string(),
         })?;
     }
 
@@ -43,14 +43,14 @@ pub async fn set_ownership(
 
 /// Get file owner and group information
 pub async fn get_ownership(path: &Path) -> Result<(String, String), FileError> {
-    let metadata = tokio::fs::metadata(path).await?;
+    let _metadata = tokio::fs::metadata(path).await?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
 
-        let uid = metadata.uid();
-        let gid = metadata.gid();
+        let uid = _metadata.uid();
+        let gid = _metadata.gid();
 
         let owner = get_username_by_uid(uid).unwrap_or_else(|| uid.to_string());
         let group = get_groupname_by_gid(gid).unwrap_or_else(|| gid.to_string());
@@ -167,6 +167,7 @@ fn get_groupname_by_gid(gid: u32) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
     use super::*;
 
     #[cfg(unix)]
