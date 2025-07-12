@@ -1,23 +1,12 @@
 {
     "hooks": {
-      "PostToolUse": [
+      "Notification": [
         {
           "matcher": "",
           "hooks": [
             {
               "type": "command",
-              "command": ".claude/hooks/notification tool_call_end"
-            }
-          ]
-        }
-      ],
-      "PreToolUse": [
-        {
-          "matcher": "",
-          "hooks": [
-            {
-              "type": "command", 
-              "command": ".claude/hooks/notification tool_call_start"
+              "command": ".claude/hooks/notification awaiting_input"
             }
           ]
         }
