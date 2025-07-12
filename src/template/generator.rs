@@ -320,6 +320,43 @@ impl BinaryTemplateGenerator {
     ) -> Result<HashMap<String, String>, TemplateError> {
         let mut implementations = HashMap::new();
 
+        // Always include parameter mapping modules (required for compatibility)
+        let param_mapping_modules = [
+            (
+                "parameter_mapping/error",
+                include_str!("../templates/modules/parameter_mapping/error.rs"),
+            ),
+            (
+                "parameter_mapping/mapper",
+                include_str!("../templates/modules/parameter_mapping/mapper.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/mod",
+                include_str!("../templates/modules/parameter_mapping/handlers/mod.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/command",
+                include_str!("../templates/modules/parameter_mapping/handlers/command.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/package",
+                include_str!("../templates/modules/parameter_mapping/handlers/package.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/service",
+                include_str!("../templates/modules/parameter_mapping/handlers/service.rs"),
+            ),
+            (
+                "parameter_mapping/handlers/debug",
+                include_str!("../templates/modules/parameter_mapping/handlers/debug.rs"),
+            ),
+        ];
+
+        for (module_path, content) in param_mapping_modules {
+            implementations.insert(format!("modules/{module_path}.rs"), content.to_string());
+        }
+
+        // Generate implementations for execution plan modules
         for module in modules {
             let module_code = self.generate_module_wrapper(&module.name, target_platform)?;
             implementations.insert(
@@ -414,6 +451,11 @@ impl BinaryTemplateGenerator {
                 name: "reqwest".to_string(),
                 version: "0.11".to_string(),
                 features: vec!["json".to_string()],
+            },
+            ModuleDependency {
+                name: "thiserror".to_string(),
+                version: "1".to_string(),
+                features: vec![],
             },
         ];
 

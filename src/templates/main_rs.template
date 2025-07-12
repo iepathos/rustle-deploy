@@ -19,6 +19,32 @@ mod embedded_data {
 
 mod modules {
 {{module_implementations}}
+
+    pub mod parameter_mapping {
+        use std::collections::HashMap;
+        use serde_json::Value;
+
+        pub mod error;
+        pub mod mapper;
+        pub mod handlers;
+
+        pub use error::ParameterError;
+        pub use mapper::ParameterMapper;
+
+        pub trait ModuleParameterHandler {
+            /// Map Ansible-style parameters to module-expected parameters
+            fn map_parameters(&self, ansible_params: HashMap<String, Value>) -> Result<HashMap<String, Value>, ParameterError>;
+            
+            /// Get required parameters for this module
+            fn required_parameters(&self) -> Vec<&'static str>;
+            
+            /// Get parameter aliases for this module
+            fn parameter_aliases(&self) -> HashMap<&'static str, Vec<&'static str>>;
+            
+            /// Validate that all required parameters are present
+            fn validate_parameters(&self, params: &HashMap<String, Value>) -> Result<(), ParameterError>;
+        }
+    }
 }
 
 mod runtime {
@@ -121,19 +147,24 @@ mod runtime {
             let start_time = std::time::SystemTime::now();
             let execution_start = std::time::Instant::now();
             
-            // Execute module based on type
+            // Map parameters using ParameterMapper
+            let parameter_mapper = modules::parameter_mapping::ParameterMapper::new();
+            let mapped_args = parameter_mapper.map_for_module(&task.module, task.args.clone())
+                .map_err(|e| anyhow::anyhow!("Parameter mapping failed: {}", e))?;
+            
+            // Execute module with mapped parameters
             let module_result_value = match task.module.as_str() {
                 "command" | "shell" => {
-                    modules::command::execute(task.args.clone()).await?
+                    modules::command::execute(mapped_args).await?
                 }
                 "package" => {
-                    modules::package::execute(task.args.clone()).await?
+                    modules::package::execute(mapped_args).await?
                 }
                 "service" => {
-                    modules::service::execute(task.args.clone()).await?
+                    modules::service::execute(mapped_args).await?
                 }
                 "debug" => {
-                    modules::debug::execute(task.args.clone()).await?
+                    modules::debug::execute(mapped_args).await?
                 }
                 _ => {
                     return Err(anyhow::anyhow!("Unsupported module: {}", task.module));

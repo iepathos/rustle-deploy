@@ -424,16 +424,21 @@ impl ProcessExecutor {
     ) -> Result<PathBuf, CompilationError> {
         let binary_path = if self.zigbuild_available {
             // Try zigbuild first
-            match self.execute_cargo_zigbuild(
-                &project.project_dir,
-                &target_spec.target_triple,
-                &target_spec.optimization_level,
-            )
-            .await {
+            match self
+                .execute_cargo_zigbuild(
+                    &project.project_dir,
+                    &target_spec.target_triple,
+                    &target_spec.optimization_level,
+                )
+                .await
+            {
                 Ok(path) => path,
                 Err(zigbuild_error) => {
                     if zigbuild_fallback {
-                        tracing::warn!("Zigbuild failed, falling back to standard cargo: {}", zigbuild_error);
+                        tracing::warn!(
+                            "Zigbuild failed, falling back to standard cargo: {}",
+                            zigbuild_error
+                        );
                         self.execute_cargo_build(
                             &project.project_dir,
                             &target_spec.target_triple,
@@ -502,46 +507,49 @@ impl ProcessExecutor {
         self.determine_binary_path(project_dir, target, optimization)
     }
 
-    fn configure_macos_zigbuild_env(&self, cmd: &mut tokio::process::Command) -> Result<(), CompilationError> {
+    fn configure_macos_zigbuild_env(
+        &self,
+        cmd: &mut tokio::process::Command,
+    ) -> Result<(), CompilationError> {
         // Get macOS SDK path
         let sdk_path = std::process::Command::new("xcrun")
             .args(["--show-sdk-path"])
             .output()
-            .map_err(|e| CompilationError::ProcessExecution(format!("Failed to get SDK path: {}", e)))?;
+            .map_err(|e| {
+                CompilationError::ProcessExecution(format!("Failed to get SDK path: {}", e))
+            })?;
 
         if !sdk_path.status.success() {
-            return Err(CompilationError::ProcessExecution("xcrun --show-sdk-path failed".to_string()));
+            return Err(CompilationError::ProcessExecution(
+                "xcrun --show-sdk-path failed".to_string(),
+            ));
         }
 
         let sdk_path_string = String::from_utf8_lossy(&sdk_path.stdout);
         let sdk_path_str = sdk_path_string.trim();
-        
+
         // Set essential macOS environment variables for zigbuild
         cmd.env("SDKROOT", sdk_path_str);
         cmd.env("MACOSX_DEPLOYMENT_TARGET", "11.0");
-        
+
         // Set framework search paths
         let frameworks_path = format!("{}/System/Library/Frameworks", sdk_path_str);
         cmd.env("FRAMEWORK_SEARCH_PATHS", &frameworks_path);
-        
+
         // Set library search paths
         let lib_path = format!("{}/usr/lib", sdk_path_str);
         cmd.env("LIBRARY_PATH", &lib_path);
-        
+
         // Set header search paths
         let include_path = format!("{}/usr/include", sdk_path_str);
         cmd.env("CPATH", &include_path);
-        
+
         // Set Zig-specific environment variables
         cmd.env("ZIG_SYSTEM_LINKER_HACK", "1");
-        
+
         // Set additional linker flags for macOS frameworks
-        let framework_flags = format!(
-            "-L framework={} -F {}",
-            frameworks_path,
-            frameworks_path
-        );
-        
+        let framework_flags = format!("-L framework={} -F {}", frameworks_path, frameworks_path);
+
         // Get existing RUSTFLAGS and append framework flags
         let existing_rustflags = std::env::var("RUSTFLAGS").unwrap_or_default();
         let combined_rustflags = if existing_rustflags.is_empty() {
@@ -551,8 +559,11 @@ impl ProcessExecutor {
         };
         cmd.env("RUSTFLAGS", combined_rustflags);
 
-        tracing::debug!("Configured macOS zigbuild environment: SDKROOT={}, frameworks={}", 
-                       sdk_path_str, frameworks_path);
+        tracing::debug!(
+            "Configured macOS zigbuild environment: SDKROOT={}, frameworks={}",
+            sdk_path_str,
+            frameworks_path
+        );
 
         Ok(())
     }
@@ -616,7 +627,7 @@ impl ProcessExecutor {
     fn append_rustflags(&self, cmd: &mut tokio::process::Command, new_flags: &str) {
         // Get existing RUSTFLAGS from system environment
         let existing_flags = std::env::var("RUSTFLAGS").unwrap_or_default();
-            
+
         let combined_flags = if existing_flags.is_empty() {
             new_flags.to_string()
         } else {
@@ -636,10 +647,7 @@ impl ProcessExecutor {
             _ => "release",
         };
 
-        let target_dir = project_dir
-            .join("target")
-            .join(target)
-            .join(profile_dir);
+        let target_dir = project_dir.join("target").join(target).join(profile_dir);
 
         // First try the expected location
         let mut expected_binary_path = target_dir.join("rustle-runner");
@@ -658,7 +666,10 @@ impl ProcessExecutor {
                 let path = entry.path();
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
                     // Look for rustle_runner binary (with or without hash)
-                    if file_name.starts_with("rustle_runner") && !file_name.ends_with(".d") && !file_name.contains(".rcgu.") {
+                    if file_name.starts_with("rustle_runner")
+                        && !file_name.ends_with(".d")
+                        && !file_name.contains(".rcgu.")
+                    {
                         // Check if it's an executable (not a library or object file)
                         if let Ok(metadata) = std::fs::metadata(&path) {
                             #[cfg(unix)]
@@ -677,7 +688,10 @@ impl ProcessExecutor {
                             // On other platforms, assume it's executable if it's not a known non-executable extension
                             #[cfg(not(any(unix, windows)))]
                             {
-                                if !file_name.ends_with(".rlib") && !file_name.ends_with(".rmeta") && !file_name.ends_with(".o") {
+                                if !file_name.ends_with(".rlib")
+                                    && !file_name.ends_with(".rmeta")
+                                    && !file_name.ends_with(".o")
+                                {
                                     return Ok(path);
                                 }
                             }
