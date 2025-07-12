@@ -163,12 +163,12 @@ fn test_ansible_features_comprehensive() {
     ];
 
     for plan_path in &working_plans {
-        let content = fs::read_to_string(plan_path)
-            .unwrap_or_else(|_| panic!("Failed to read {}", plan_path));
+        let content =
+            fs::read_to_string(plan_path).unwrap_or_else(|_| panic!("Failed to read {plan_path}"));
 
         let plan = parser
             .parse(&content, PlanFormat::Json)
-            .unwrap_or_else(|e| panic!("Failed to parse {}: {:?}", plan_path, e));
+            .unwrap_or_else(|e| panic!("Failed to parse {plan_path}: {e:?}"));
 
         let validation_result = parser.validate(&plan);
         assert!(
