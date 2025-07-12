@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "created_at": "2025-07-12T21:27:17.667631Z",
+    "created_at": "2025-07-12T21:56:49.488570Z",
     "rustle_version": "0.1.0",
-    "playbook_hash": "268b3ce8e4ef0f7d6c35516e586a80a3",
+    "playbook_hash": "771bae5a30fb7f3df8ba31e6f571ef79",
     "inventory_hash": "653a2ee28be80c8e41d5251b3923d10d",
     "planning_options": {
       "limit": null,
@@ -39,10 +39,10 @@
               "name": "Create base directory structure",
               "module": "file",
               "args": {
-                "state": "directory",
-                "path": "/tmp/rustle_file_test",
+                "recurse": true,
                 "mode": "0755",
-                "recurse": true
+                "state": "directory",
+                "path": "/tmp/rustle_file_test"
               },
               "hosts": [
                 "localhost"
@@ -80,9 +80,9 @@
               "name": "Create subdirectories",
               "module": "file",
               "args": {
-                "state": "directory",
                 "mode": "0750",
-                "path": "/tmp/rustle_file_test/"
+                "path": "/tmp/rustle_file_test/",
+                "state": "directory"
               },
               "hosts": [
                 "localhost"
@@ -104,10 +104,10 @@
               "name": "Copy configuration file",
               "module": "copy",
               "args": {
-                "backup": true,
                 "src": "tests/fixtures/files/test_files/sample.conf",
-                "dest": "/tmp/rustle_file_test/config/app.conf",
-                "mode": "0644"
+                "backup": true,
+                "mode": "0644",
+                "dest": "/tmp/rustle_file_test/config/app.conf"
               },
               "hosts": [
                 "localhost"
@@ -129,8 +129,8 @@
               "name": "Create empty log file",
               "module": "file",
               "args": {
-                "path": "/tmp/rustle_file_test/logs/app.log",
                 "state": "touch",
+                "path": "/tmp/rustle_file_test/logs/app.log",
                 "mode": "0664"
               },
               "hosts": [
@@ -153,9 +153,9 @@
               "name": "Create symbolic link",
               "module": "file",
               "args": {
-                "state": "link",
                 "dest": "/tmp/rustle_file_test/current.conf",
-                "src": "/tmp/rustle_file_test/config/app.conf"
+                "src": "/tmp/rustle_file_test/config/app.conf",
+                "state": "link"
               },
               "hosts": [
                 "localhost"

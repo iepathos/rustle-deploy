@@ -144,22 +144,30 @@ pub struct BinaryDeploymentPlan {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target_architecture: Option<String>,
     #[serde(
+        default,
         skip_serializing_if = "Option::is_none",
         with = "serde_duration_opt_legacy"
     )]
     pub estimated_savings: Option<Duration>,
 
     // Existing template generation fields (unchanged)
+    #[serde(default)]
     pub controller_endpoint: Option<String>,
-    #[serde(with = "serde_duration_opt")]
+    #[serde(default, with = "serde_duration_opt")]
     pub execution_timeout: Option<Duration>,
-    #[serde(with = "serde_duration_opt")]
+    #[serde(default, with = "serde_duration_opt")]
     pub report_interval: Option<Duration>,
+    #[serde(default)]
     pub cleanup_on_completion: Option<bool>,
+    #[serde(default)]
     pub log_level: Option<String>,
+    #[serde(default)]
     pub max_retries: Option<u32>,
+    #[serde(default)]
     pub static_files: Vec<StaticFileRef>,
+    #[serde(default)]
     pub secrets: Vec<SecretRef>,
+    #[serde(default)]
     pub verbose: Option<bool>,
 }
 
