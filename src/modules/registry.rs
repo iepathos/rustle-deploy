@@ -31,6 +31,13 @@ impl ModuleRegistry {
         // Register system modules
         registry.register(Box::new(crate::modules::system::setup::SetupModule::new()));
 
+        // Register archive modules
+        registry.register(Box::new(crate::modules::archive::UnarchiveModule::new()));
+        registry.register(Box::new(crate::modules::archive::ArchiveModule::new()));
+
+        // Register source control modules
+        registry.register(Box::new(crate::modules::source_control::GitModule::new()));
+
         registry
     }
 

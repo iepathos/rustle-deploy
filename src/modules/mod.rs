@@ -1,5 +1,6 @@
 //! Core execution modules for Ansible-compatible binary deployments
 
+pub mod archive;
 pub mod ast_parser;
 pub mod cache;
 pub mod compiler;
@@ -8,8 +9,10 @@ pub mod error;
 pub mod files;
 pub mod interface;
 pub mod loader;
+pub mod net;
 pub mod registry;
 pub mod resolver;
+pub mod source_control;
 pub mod system;
 pub mod validator;
 

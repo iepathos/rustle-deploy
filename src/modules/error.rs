@@ -349,3 +349,21 @@ impl From<serde_json::Error> for ModuleError {
         }
     }
 }
+
+impl From<git2::Error> for ModuleError {
+    fn from(err: git2::Error) -> Self {
+        ModuleError::ExecutionFailed {
+            message: format!("Git error: {err}"),
+        }
+    }
+}
+
+impl From<serde_json::Error> for ValidationError {
+    fn from(err: serde_json::Error) -> Self {
+        ValidationError::InvalidArgValue {
+            arg: "json".to_string(),
+            value: "<serialization>".to_string(),
+            reason: err.to_string(),
+        }
+    }
+}
