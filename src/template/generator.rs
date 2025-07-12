@@ -200,14 +200,23 @@ impl BinaryTemplateGenerator {
         )?;
 
         // Generate module implementations
+        let mut modules = std::collections::HashSet::new();
+        
+        // Collect modules from regular tasks and handlers
+        for play in &execution_plan.plays {
+            for batch in &play.batches {
+                for task in &batch.tasks {
+                    modules.insert(task.module.clone());
+                }
+            }
+            // Collect modules from handlers
+            for handler in &play.handlers {
+                modules.insert(handler.module.clone());
+            }
+        }
+        
         let module_files = self.generate_module_implementations(
-            &execution_plan
-                .plays
-                .iter()
-                .flat_map(|p| &p.batches)
-                .flat_map(|b| &b.tasks)
-                .map(|t| t.module.clone())
-                .collect::<std::collections::HashSet<_>>()
+            &modules
                 .into_iter()
                 .map(|m| ModuleSpec {
                     name: m,
@@ -492,13 +501,20 @@ impl BinaryTemplateGenerator {
     }
 
     fn generate_module_declarations(&self, execution_plan: &RustlePlanOutput) -> Result<String> {
-        let modules: std::collections::HashSet<String> = execution_plan
-            .plays
-            .iter()
-            .flat_map(|p| &p.batches)
-            .flat_map(|b| &b.tasks)
-            .map(|t| t.module.clone())
-            .collect();
+        let mut modules = std::collections::HashSet::new();
+        
+        // Collect modules from regular tasks
+        for play in &execution_plan.plays {
+            for batch in &play.batches {
+                for task in &batch.tasks {
+                    modules.insert(task.module.clone());
+                }
+            }
+            // Collect modules from handlers
+            for handler in &play.handlers {
+                modules.insert(handler.module.clone());
+            }
+        }
 
         let declarations = modules
             .iter()
@@ -607,3 +623,4 @@ impl GeneratedTemplate {
         format!("{:x}", hasher.finalize())
     }
 }
+

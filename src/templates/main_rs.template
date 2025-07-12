@@ -1,25 +1,23 @@
 use std::collections::HashMap;
 use std::time::Duration;
-use tokio::time::{timeout, sleep};
+use tokio::time::timeout;
 use serde_json::Value;
 use anyhow::{Result, Context};
 use tracing::{info, debug, error, instrument};
 
 mod embedded_data {
-    use super::*;
+    pub const EXECUTION_PLAN: &str = r#"{{{execution_plan}}}"#;
+    pub const RUNTIME_CONFIG: &str = r#"{{{runtime_config}}}"#;
     
-    pub const EXECUTION_PLAN: &str = r#"{{execution_plan}}"#;
-    pub const RUNTIME_CONFIG: &str = r#"{{runtime_config}}"#;
-    
-    pub fn get_static_files() -> HashMap<&'static str, &'static [u8]> {
-        let mut files = HashMap::new();
+    #[allow(dead_code)]
+    pub fn get_static_files() -> std::collections::HashMap<&'static str, &'static [u8]> {
+        let mut files = std::collections::HashMap::new();
 {{static_files}}
         files
     }
 }
 
 mod modules {
-    use super::*;
 {{module_implementations}}
 }
 
@@ -70,7 +68,7 @@ mod runtime {
             
             Ok(PlayResult {
                 play_id: play.play_id.clone(),
-                success: task_results.iter().all(|r| !r.failed),
+                success: task_results.iter().all(|r| !r.module_result.failed),
                 task_results,
             })
         }
@@ -124,7 +122,7 @@ mod runtime {
             let execution_start = std::time::Instant::now();
             
             // Execute module based on type
-            let module_result = match task.module.as_str() {
+            let module_result_value = match task.module.as_str() {
                 "command" | "shell" => {
                     modules::command::execute(task.args.clone()).await?
                 }
@@ -140,6 +138,27 @@ mod runtime {
                 _ => {
                     return Err(anyhow::anyhow!("Unsupported module: {}", task.module));
                 }
+            };
+            
+            // Convert Value result to ModuleResult
+            let module_result = ModuleResult {
+                changed: module_result_value.get("changed").and_then(|v| v.as_bool()).unwrap_or(false),
+                failed: module_result_value.get("failed").and_then(|v| v.as_bool()).unwrap_or(false),
+                msg: module_result_value.get("msg").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                stdout: module_result_value.get("stdout").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                stderr: module_result_value.get("stderr").and_then(|v| v.as_str()).map(|s| s.to_string()),
+                rc: module_result_value.get("rc").and_then(|v| v.as_i64()).map(|i| i as i32),
+                results: {
+                    let mut results = HashMap::new();
+                    if let Value::Object(obj) = &module_result_value {
+                        for (key, value) in obj {
+                            if !["changed", "failed", "msg", "stdout", "stderr", "rc"].contains(&key.as_str()) {
+                                results.insert(key.clone(), value.clone());
+                            }
+                        }
+                    }
+                    results
+                },
             };
             
             let duration = execution_start.elapsed();
@@ -318,12 +337,67 @@ struct TaskPlan {
 #[derive(Debug, Clone, serde::Deserialize)]
 struct RuntimeConfig {
     pub controller_endpoint: Option<String>,
+    #[serde(default, with = "duration_option_secs")]
     pub execution_timeout: Option<Duration>,
+    #[allow(dead_code)]
+    #[serde(with = "duration_secs")]
     pub report_interval: Duration,
     pub cleanup_on_completion: bool,
+    #[allow(dead_code)]
     pub log_level: String,
+    #[allow(dead_code)]
+    #[serde(default = "default_heartbeat_interval", with = "duration_secs")]
     pub heartbeat_interval: Duration,
+    #[allow(dead_code)]
+    #[serde(default)]
     pub max_retries: u32,
+}
+
+mod duration_secs {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        duration.as_secs().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let secs = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(secs))
+    }
+}
+
+mod duration_option_secs {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match duration {
+            Some(d) => Some(d.as_secs()).serialize(serializer),
+            None => None::<u64>.serialize(serializer),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt_secs = Option::<u64>::deserialize(deserializer)?;
+        Ok(opt_secs.map(Duration::from_secs))
+    }
+}
+
+fn default_heartbeat_interval() -> Duration {
+    Duration::from_secs(60)
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

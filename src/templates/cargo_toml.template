@@ -8,15 +8,8 @@ name = "rustle-runner"
 path = "src/main.rs"
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-anyhow = "1"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["fmt"] }
-reqwest = { version = "0.11", features = ["json"] }
 {{#each dependencies}}
-{{name}} = "{{version}}"{{#if features}} features = [{{#each features}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}]{{/if}}
+{{name}} = {{#if features}}{ version = "{{version}}", features = [{{#each features}}"{{this}}"{{#unless @last}}, {{/unless}}{{/each}}] }{{else}}"{{version}}"{{/if}}
 {{/each}}
 
 [profile.release]
