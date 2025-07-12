@@ -31,7 +31,7 @@ struct RustleDeployCli {
     setup: bool,
 
     /// Directory for compiled binaries
-    #[arg(short, long, default_value = "./target")]
+    #[arg(short, long, default_value = ".")]
     output_dir: PathBuf,
 
     /// Target architecture (auto-detect from inventory/plan)
