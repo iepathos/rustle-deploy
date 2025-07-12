@@ -16,7 +16,9 @@ pub mod runtime;
 pub mod template;
 pub mod types;
 
-pub use compilation::{BinaryCompiler, CompilerConfig, TargetDetector, TargetSpecification, CompilationCache};
+pub use compilation::{
+    BinaryCompiler, CompilationCache, CompilerConfig, TargetDetector, TargetSpecification,
+};
 pub use deploy::DeploymentManager;
 pub use inventory::*;
 pub use types::*;

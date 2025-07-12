@@ -201,7 +201,7 @@ impl BinaryTemplateGenerator {
 
         // Generate module implementations
         let mut modules = std::collections::HashSet::new();
-        
+
         // Collect modules from regular tasks and handlers
         for play in &execution_plan.plays {
             for batch in &play.batches {
@@ -214,7 +214,7 @@ impl BinaryTemplateGenerator {
                 modules.insert(handler.module.clone());
             }
         }
-        
+
         let module_files = self.generate_module_implementations(
             &modules
                 .into_iter()
@@ -502,7 +502,7 @@ impl BinaryTemplateGenerator {
 
     fn generate_module_declarations(&self, execution_plan: &RustlePlanOutput) -> Result<String> {
         let mut modules = std::collections::HashSet::new();
-        
+
         // Collect modules from regular tasks
         for play in &execution_plan.plays {
             for batch in &play.batches {
@@ -623,4 +623,3 @@ impl GeneratedTemplate {
         format!("{:x}", hasher.finalize())
     }
 }
-
