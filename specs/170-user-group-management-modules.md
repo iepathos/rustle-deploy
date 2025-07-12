@@ -2,7 +2,9 @@
 
 ## Feature Summary
 
-Implement comprehensive user and group management modules equivalent to Ansible's `user` and `group` modules. These modules provide essential functionality for managing system accounts, security permissions, and access control in deployment automation scenarios. Cross-platform support ensures consistent user management across Linux, macOS, Windows, and BSD systems.
+Implement comprehensive user and group management modules equivalent to Ansible's `user` and `group` modules within the rustle-deploy binary execution system. These modules provide essential functionality for managing system accounts, security permissions, and access control in deployment automation scenarios. Cross-platform support ensures consistent user management across Linux, macOS, Windows, and BSD systems.
+
+**Architecture Note**: These modules are self-contained within rustle-deploy, following Unix philosophy of tool independence. They do not depend on external rustle CLI tools.
 
 ## Goals & Requirements
 

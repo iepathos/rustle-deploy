@@ -1,8 +1,25 @@
-# Spec 150: System Facts Gathering Module
+# Spec 150: System Facts Gathering Module (setup)
 
 ## Feature Summary
 
-Implement a comprehensive system facts gathering module equivalent to Ansible's `setup` module. This module will collect detailed information about the target system including hardware, operating system, network configuration, and environment details. Facts are essential for conditional logic in deployment scripts and provide the foundation for intelligent automation decisions.
+Implement a comprehensive system facts gathering module equivalent to Ansible's `setup` module within the rustle-deploy binary execution system. This module will collect detailed information about the target system including hardware, operating system, network configuration, and environment details. Facts are essential for conditional logic in deployment scripts and provide the foundation for intelligent automation decisions.
+
+**Important**: This module is independent of the `rustle-facts` CLI tool. Both collect system facts but are optimized for different contexts - this module for embedded binary execution, `rustle-facts` for CLI pipeline usage.
+
+## Relationship to rustle-facts Tool
+
+This `setup` module and the `rustle-facts` CLI tool are **completely independent implementations** that happen to collect similar system information:
+
+| Aspect | setup Module (This Spec) | rustle-facts CLI Tool |
+|--------|--------------------------|----------------------|
+| **Purpose** | Single-host fact collection within binary execution | Multi-host fact collection for pipeline |
+| **Context** | Embedded in compiled binaries | Standalone CLI tool |
+| **Optimization** | Memory efficiency, embedded execution | Parallel collection, caching |
+| **Output** | ModuleResult with ansible_facts | JSON to stdout |
+| **Dependencies** | None outside rustle-deploy | None - fully independent |
+| **Usage** | `- setup:` task in playbooks | `rustle-facts inventory.yml > facts.json` |
+
+Both tools follow Unix philosophy by being independent and communicating through standardized data formats (JSON), not shared code.
 
 ## Goals & Requirements
 
@@ -196,8 +213,9 @@ src/modules/system/
 
 ### Integration Points
 - Update `src/modules/system/mod.rs` to include setup module
-- Integrate with `ExecutionContext` for fact caching
+- Integrate with `ExecutionContext` for fact caching within rustle-deploy execution
 - Add fact template helpers for use in template module
+- **No dependencies on external rustle tools** - completely self-contained implementation
 
 ## Implementation Details
 
@@ -540,9 +558,10 @@ pub enum FactError {
 - `regex = "1.10"` (already available) - Text parsing
 
 ### Internal Dependencies
-- `crate::modules::interface` - Module interface
-- `crate::execution::context` - Execution context with fact caching
-- `crate::types::platform` - Platform detection
+- `crate::modules::interface` - Module interface traits within rustle-deploy
+- `crate::execution::context` - Execution context with fact caching within rustle-deploy
+- `crate::types::platform` - Platform detection within rustle-deploy
+- **No external rustle tool dependencies** - self-contained implementation
 
 ## Configuration
 
@@ -601,4 +620,4 @@ Complete documentation of all collected facts:
       memory_mb: "{{ ansible_memtotal_mb }}"
 ```
 
-This specification provides comprehensive system fact gathering capabilities that will enable intelligent deployment automation based on target system characteristics.
+This specification provides comprehensive system fact gathering capabilities within the rustle-deploy binary execution system that will enable intelligent deployment automation based on target system characteristics. The implementation is completely independent of the `rustle-facts` CLI tool, following Unix philosophy of tool independence while serving the specific needs of embedded binary execution.

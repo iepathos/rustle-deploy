@@ -2,7 +2,9 @@
 
 ## Feature Summary
 
-Implement essential modules for handling archives (unarchive/archive), version control operations (git), and URL-based operations (uri, get_url). These modules provide critical functionality for software deployment workflows including downloading artifacts, extracting packages, managing source code repositories, and performing HTTP operations for health checks and API interactions.
+Implement essential modules for handling archives (unarchive/archive), version control operations (git), and URL-based operations (uri, get_url) within the rustle-deploy binary execution system. These modules provide critical functionality for software deployment workflows including downloading artifacts, extracting packages, managing source code repositories, and performing HTTP operations for health checks and API interactions.
+
+**Architecture Note**: These modules are self-contained within rustle-deploy, following Unix philosophy of tool independence. They do not depend on external rustle CLI tools.
 
 ## Goals & Requirements
 

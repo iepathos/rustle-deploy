@@ -2,7 +2,9 @@
 
 ## Feature Summary
 
-Implement essential file operation modules (file, copy, stat, template) that provide the foundation for configuration management and deployment automation. These modules are critical for any deployment tool as they handle the fundamental operations of managing files, copying content, checking file states, and processing configuration templates.
+Implement essential file operation modules (file, copy, stat, template) within the rustle-deploy binary execution system that provide the foundation for configuration management and deployment automation. These modules are critical for any deployment tool as they handle the fundamental operations of managing files, copying content, checking file states, and processing configuration templates.
+
+**Architecture Note**: These modules are self-contained within rustle-deploy, following Unix philosophy of tool independence. They do not depend on external rustle CLI tools.
 
 ## Goals & Requirements
 
