@@ -1,3 +1,5 @@
+rustle-runner
+
 # Rust build artifacts
 /target/
 /Cargo.lock
