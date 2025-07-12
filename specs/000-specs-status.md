@@ -17,13 +17,13 @@ This document tracks the status of all specification documents in the project.
 | 090 | Zero-Infrastructure Cross-Compilation | ✅ Complete |
 | 100 | Binary Compilation Pipeline | ✅ Complete |
 | 120 | Binary Output Management | ✅ Complete |
+| 130 | Module Parameter Compatibility | ✅ Complete |
 
 ## In Progress / Planned Specs
 
 | Spec | Feature | Status |
 |------|---------|--------|
 | 110 | End-to-End Testing Framework | ⬜ Planned |
-| 130 | Module Parameter Compatibility | ⬜ Planned |
 
 ## Notes
 
