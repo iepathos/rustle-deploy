@@ -3,6 +3,8 @@
 use crate::modules::system::facts::FactError;
 use serde_json::json;
 use std::collections::HashMap;
+#[cfg(target_os = "linux")]
+use tokio::fs;
 
 pub struct HardwareCollector;
 

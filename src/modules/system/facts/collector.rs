@@ -413,21 +413,22 @@ impl SystemFactCollector {
             if std::path::Path::new("/sbin/init").exists() {
                 return "sysvinit".to_string();
             }
+            return "unknown".to_string();
         }
 
         #[cfg(target_os = "macos")]
         {
-            "launchd".to_string()
+            return "launchd".to_string();
         }
 
         #[cfg(target_os = "windows")]
         {
-            "win32_service".to_string()
+            return "win32_service".to_string();
         }
 
         #[cfg(target_os = "freebsd")]
         {
-            "rc".to_string()
+            return "rc".to_string();
         }
 
         #[cfg(not(any(

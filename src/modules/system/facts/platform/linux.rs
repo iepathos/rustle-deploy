@@ -206,9 +206,9 @@ impl LinuxFactCollector {
             .await
         {
             if output.status.success() {
-                let virt_type = String::from_utf8_lossy(&output.stdout).trim();
+                let virt_type = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if virt_type != "none" {
-                    return virt_type.to_string();
+                    return virt_type;
                 }
             }
         }
