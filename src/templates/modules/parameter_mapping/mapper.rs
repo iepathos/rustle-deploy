@@ -5,7 +5,7 @@ use tracing::debug;
 use super::{
     handlers::{
         CommandParameterHandler, CopyParameterHandler, DebugParameterHandler, FileParameterHandler,
-        PackageParameterHandler, ServiceParameterHandler,
+        PackageParameterHandler, ServiceParameterHandler, WaitForHandler,
     },
     ModuleParameterHandler, ParameterError,
 };
@@ -25,6 +25,7 @@ impl ParameterMapper {
         handlers.insert("package".to_string(), Box::new(PackageParameterHandler));
         handlers.insert("service".to_string(), Box::new(ServiceParameterHandler));
         handlers.insert("debug".to_string(), Box::new(DebugParameterHandler));
+        handlers.insert("wait_for".to_string(), Box::new(WaitForHandler));
 
         // Package management modules - all use PackageParameterHandler
         handlers.insert("apt".to_string(), Box::new(PackageParameterHandler));

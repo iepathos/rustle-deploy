@@ -287,6 +287,18 @@ impl ModuleRegistry {
                 version_constraints: None,
             },
         );
+
+        self.register_module(
+            "wait_for",
+            ModuleCompatibilityInfo {
+                compatibility: BinaryCompatibility::FullyCompatible,
+                static_linkable: true,
+                performance_impact: PerformanceImpact::Low,
+                resource_requirements: ResourceRequirements::minimal(),
+                dependencies: vec!["network".to_string()],
+                version_constraints: None,
+            },
+        );
     }
 
     pub fn register_module(&mut self, name: &str, info: ModuleCompatibilityInfo) {

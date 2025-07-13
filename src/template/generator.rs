@@ -382,6 +382,10 @@ impl BinaryTemplateGenerator {
                 "parameter_mapping/handlers/debug",
                 include_str!("../templates/modules/parameter_mapping/handlers/debug.rs"),
             ),
+            (
+                "parameter_mapping/handlers/wait_for",
+                include_str!("../templates/modules/parameter_mapping/handlers/wait_for.rs"),
+            ),
         ];
 
         for (module_path, content) in param_mapping_modules {
@@ -639,6 +643,7 @@ impl BinaryTemplateGenerator {
             "debug" => Ok(include_str!("../templates/modules/debug.rs").to_string()),
             "copy" => Ok(include_str!("../templates/modules/copy.rs").to_string()),
             "file" => Ok(include_str!("../templates/modules/file.rs").to_string()),
+            "wait_for" => Ok(include_str!("../templates/modules/wait_for.rs").to_string()),
             _ => {
                 // Generate a basic module wrapper for unknown modules
                 let module_template = r#"
