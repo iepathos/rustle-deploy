@@ -1,0 +1,162 @@
+{
+  "metadata": {
+    "created_at": "2025-07-13T03:40:24.141825Z",
+    "rustle_plan_version": "0.1.0",
+    "playbook_hash": "ec729b4f0acf4335e86e6394ffca2ad9",
+    "inventory_hash": "653a2ee28be80c8e41d5251b3923d10d",
+    "planning_options": {
+      "limit": null,
+      "tags": [],
+      "skip_tags": [],
+      "check_mode": false,
+      "diff_mode": false,
+      "forks": 50,
+      "serial": null,
+      "strategy": "BinaryHybrid",
+      "binary_threshold": 5,
+      "force_binary": false,
+      "force_ssh": false
+    }
+  },
+  "plays": [
+    {
+      "play_id": "play-0",
+      "name": "Service management test",
+      "strategy": "BinaryHybrid",
+      "serial": null,
+      "hosts": [],
+      "batches": [
+        {
+          "batch_id": "binary-batch",
+          "hosts": [],
+          "tasks": [
+            {
+              "task_id": "task_0",
+              "name": "Install nginx for testing",
+              "module": "package",
+              "args": {
+                "name": "nginx",
+                "state": "present"
+              },
+              "hosts": [],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 0,
+              "can_run_parallel": false,
+              "estimated_duration": {
+                "secs": 60,
+                "nanos": 0
+              },
+              "risk_level": "High"
+            },
+            {
+              "task_id": "task_1",
+              "name": "Start nginx service",
+              "module": "service",
+              "args": {
+                "state": "started",
+                "name": "nginx",
+                "enabled": true
+              },
+              "hosts": [],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 1,
+              "can_run_parallel": false,
+              "estimated_duration": {
+                "secs": 5,
+                "nanos": 0
+              },
+              "risk_level": "High"
+            },
+            {
+              "task_id": "task_2",
+              "name": "Check nginx status",
+              "module": "command",
+              "args": {
+                "_raw_params": "systemctl is-active nginx"
+              },
+              "hosts": [],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 2,
+              "can_run_parallel": false,
+              "estimated_duration": {
+                "secs": 4,
+                "nanos": 500000000
+              },
+              "risk_level": "Critical"
+            },
+            {
+              "task_id": "task_3",
+              "name": "Restart nginx service",
+              "module": "service",
+              "args": {
+                "state": "restarted",
+                "name": "nginx"
+              },
+              "hosts": [],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 3,
+              "can_run_parallel": false,
+              "estimated_duration": {
+                "secs": 5,
+                "nanos": 0
+              },
+              "risk_level": "High"
+            },
+            {
+              "task_id": "task_4",
+              "name": "Verify nginx is listening on port 80",
+              "module": "wait_for",
+              "args": {
+                "host": "localhost",
+                "port": 80,
+                "timeout": 30,
+                "delay": 2
+              },
+              "hosts": [],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 4,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 5,
+                "nanos": 0
+              },
+              "risk_level": "Medium"
+            }
+          ],
+          "parallel_groups": [],
+          "dependencies": [],
+          "estimated_duration": null
+        }
+      ],
+      "handlers": [],
+      "estimated_duration": null
+    }
+  ],
+  "binary_deployments": [],
+  "total_tasks": 5,
+  "estimated_duration": {
+    "secs": 33,
+    "nanos": 850000000
+  },
+  "estimated_compilation_time": null,
+  "parallelism_score": 0.2,
+  "network_efficiency_score": 0.2,
+  "hosts": [
+    "localhost"
+  ]
+}
