@@ -113,16 +113,9 @@ impl HttpClientWrapper {
 
     pub async fn execute_request(
         &self,
-        url: &str,
-        method: &HttpMethod,
-        headers: Option<&HashMap<String, String>>,
-        body: Option<&str>,
-        body_format: Option<&BodyFormat>,
-        user: Option<&str>,
-        password: Option<&str>,
-        expected_status: Option<&[u16]>,
+        config: &RequestConfig<'_>,
     ) -> Result<HttpResponse, HttpClientError> {
-        let http_method = match method {
+        let http_method = match config.method {
             HttpMethod::GET => Method::GET,
             HttpMethod::POST => Method::POST,
             HttpMethod::PUT => Method::PUT,
@@ -132,23 +125,23 @@ impl HttpClientWrapper {
             HttpMethod::OPTIONS => Method::OPTIONS,
         };
 
-        let mut request = self.client.request(http_method, url);
+        let mut request = self.client.request(http_method, config.url);
 
         // Add headers
-        if let Some(headers) = headers {
+        if let Some(headers) = config.headers {
             for (key, value) in headers {
                 request = request.header(key, value);
             }
         }
 
         // Add authentication
-        if let (Some(username), Some(pass)) = (user, password) {
+        if let (Some(username), Some(pass)) = (config.user, config.password) {
             request = request.basic_auth(username, Some(pass));
         }
 
         // Add body
-        if let Some(body_content) = body {
-            request = match body_format.unwrap_or(&BodyFormat::Raw) {
+        if let Some(body_content) = config.body {
+            request = match config.body_format.unwrap_or(&BodyFormat::Raw) {
                 BodyFormat::Json => request
                     .header("Content-Type", "application/json")
                     .body(body_content.to_string()),
@@ -163,7 +156,7 @@ impl HttpClientWrapper {
 
         // Validate status code
         let status_code = response.status().as_u16();
-        if let Some(expected_codes) = expected_status {
+        if let Some(expected_codes) = config.expected_status {
             if !expected_codes.contains(&status_code) {
                 return Err(HttpClientError::UnexpectedStatusCode {
                     expected: expected_codes.to_vec(),
@@ -235,6 +228,18 @@ pub struct HttpResponse {
     pub status: u16,
     pub headers: HashMap<String, String>,
     pub content: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct RequestConfig<'a> {
+    pub url: &'a str,
+    pub method: &'a HttpMethod,
+    pub headers: Option<&'a HashMap<String, String>>,
+    pub body: Option<&'a str>,
+    pub body_format: Option<&'a BodyFormat>,
+    pub user: Option<&'a str>,
+    pub password: Option<&'a str>,
+    pub expected_status: Option<&'a [u16]>,
 }
 
 impl HttpResponse {

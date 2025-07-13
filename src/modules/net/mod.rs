@@ -8,5 +8,5 @@ pub mod utils;
 pub use utils::{
     AuthError, AuthHandler, AuthMethod, BodyFormat, CertificateError, CertificateInfo,
     CertificateManager, FollowRedirects, HttpClientError, HttpClientWrapper, HttpMethod,
-    HttpResponse,
+    HttpResponse, RequestConfig,
 };
