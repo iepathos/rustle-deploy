@@ -1,5 +1,5 @@
 use crate::execution::plan_converter::RustlePlanConverter;
-use crate::execution::rustle_plan::{BinaryDeploymentPlan, RustlePlanOutput};
+use crate::execution::rustle_plan::{BinaryDeploymentPlan, RustlePlanOutput, StaticFileRef};
 use crate::types::deployment::RuntimeConfig;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -61,13 +61,41 @@ impl DataEmbedder {
             decryption_method: String::from("none"),
         };
 
+        // Process static files from binary deployment, handling missing files gracefully
+        let mut static_files = HashMap::new();
+        for static_file_ref in &binary_deployment.static_files {
+            match self.load_static_file(static_file_ref).await {
+                Ok((path, content)) => {
+                    static_files.insert(path, content);
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "Failed to load static file '{}': {}. Skipping file for stdin compatibility.",
+                        static_file_ref.source_path,
+                        e
+                    );
+                    // Continue without the file - this allows stdin input to work
+                    // even when static file paths can't be resolved
+                }
+            }
+        }
+
         Ok(EmbeddedData {
             execution_plan: execution_plan_json,
-            static_files: HashMap::new(),
+            static_files,
             module_binaries: HashMap::new(),
             runtime_config,
             secrets,
             facts_cache: None,
         })
+    }
+
+    /// Load a static file, returning the target path and file contents
+    async fn load_static_file(
+        &self,
+        static_file_ref: &StaticFileRef,
+    ) -> Result<(String, Vec<u8>), EmbedError> {
+        let content = tokio::fs::read(&static_file_ref.source_path).await?;
+        Ok((static_file_ref.target_path.clone(), content))
     }
 }

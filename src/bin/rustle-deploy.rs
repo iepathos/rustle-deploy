@@ -246,13 +246,16 @@ async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> 
     println!("🚀 rustle-deploy: Deployment");
     println!("==============================================");
 
-    // Parse execution plan from rustle-plan JSON
-    let execution_plan = if execution_plan_path.to_string_lossy() == "-" {
+    // Parse execution plan from rustle-plan JSON and cache the content for later use
+    let (execution_plan, cached_rustle_plan) = if execution_plan_path.to_string_lossy() == "-" {
         println!("📖 Execution Plan: <stdin>");
-        parse_execution_plan_from_stdin().await?
+        let rustle_plan = parse_rustle_plan_from_stdin().await?;
+        let execution_plan = create_execution_plan_summary(&rustle_plan)?;
+        (execution_plan, Some(rustle_plan))
     } else {
         println!("📖 Execution Plan: {execution_plan_path:?}");
-        parse_execution_plan_from_file(&execution_plan_path).await?
+        let execution_plan = parse_execution_plan_from_file(&execution_plan_path).await?;
+        (execution_plan, None)
     };
 
     if let Some(ref inventory) = cli.inventory {
@@ -360,7 +363,7 @@ async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> 
             println!("🔨 Compilation-only mode");
         }
 
-        match run_compilation(&execution_plan, cli).await {
+        match run_compilation(&execution_plan, cli, cached_rustle_plan).await {
             Ok(()) => {
                 println!("✅ Compilation completed successfully");
                 if cli.localhost_test {
@@ -392,16 +395,20 @@ async fn run_deployment(execution_plan_path: PathBuf, cli: &RustleDeployCli) -> 
 async fn run_compilation(
     _execution_plan: &ExecutionPlanSummary,
     cli: &RustleDeployCli,
+    cached_rustle_plan: Option<RustlePlanOutput>,
 ) -> Result<()> {
     info!("Starting binary compilation pipeline");
 
-    // Parse the actual execution plan from the file
-    let rustle_plan = parse_rustle_plan_from_file(
-        cli.execution_plan
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Execution plan is required for compilation"))?,
-    )
-    .await?;
+    // Use cached rustle plan if available (from stdin), otherwise parse from file
+    let rustle_plan = if let Some(cached_plan) = cached_rustle_plan {
+        cached_plan
+    } else if let Some(ref execution_plan_path) = cli.execution_plan {
+        parse_rustle_plan_from_file(execution_plan_path).await?
+    } else {
+        return Err(anyhow::anyhow!(
+            "Execution plan is required for compilation"
+        ));
+    };
 
     // Parse optimization level
     let optimization_level = match cli.optimization.as_str() {
@@ -532,7 +539,54 @@ async fn run_compilation(
 
 async fn parse_rustle_plan_from_file(path: &PathBuf) -> Result<RustlePlanOutput> {
     let content = tokio::fs::read_to_string(path).await?;
-    let mut rustle_plan: RustlePlanOutput = serde_json::from_str(&content)?;
+    parse_rustle_plan_content(&content).await
+}
+
+async fn parse_rustle_plan_from_stdin() -> Result<RustlePlanOutput> {
+    use tokio::io::{self, AsyncReadExt};
+    let mut stdin = io::stdin();
+    let mut content = String::new();
+    stdin.read_to_string(&mut content).await?;
+    parse_rustle_plan_content(&content).await
+}
+
+fn create_execution_plan_summary(rustle_plan: &RustlePlanOutput) -> Result<ExecutionPlanSummary> {
+    let total_tasks = rustle_plan.total_tasks;
+
+    // Count binary deployment opportunities
+    let binary_deployment_hosts = rustle_plan
+        .binary_deployments
+        .iter()
+        .map(|deployment| deployment.target_hosts.len())
+        .sum();
+
+    // Calculate SSH fallback hosts (total hosts - binary hosts)
+    let all_hosts = rustle_plan.hosts.len();
+    let ssh_fallback_hosts = all_hosts.saturating_sub(binary_deployment_hosts);
+
+    // Estimate performance speedup based on binary deployment ratio
+    let binary_ratio = if all_hosts > 0 {
+        binary_deployment_hosts as f32 / all_hosts as f32
+    } else {
+        0.0
+    };
+    let estimated_speedup = 1.0 + (binary_ratio * 4.0); // 1x to 5x speedup
+
+    // Extract strategy from metadata
+    let strategy = format!("{:?}", rustle_plan.metadata.planning_options.strategy);
+
+    Ok(ExecutionPlanSummary {
+        total_tasks,
+        binary_deployment_hosts,
+        ssh_fallback_hosts,
+        estimated_speedup,
+        estimated_compilation_time: rustle_plan.estimated_compilation_time,
+        strategy,
+    })
+}
+
+async fn parse_rustle_plan_content(content: &str) -> Result<RustlePlanOutput> {
+    let mut rustle_plan: RustlePlanOutput = serde_json::from_str(content)?;
 
     // Apply format migration to ensure compatibility with both old and new formats
     let migrator = FormatMigrator::new();
