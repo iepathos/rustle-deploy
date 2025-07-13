@@ -630,8 +630,12 @@ impl BinaryTemplateGenerator {
         // Use template-based modules for common modules
         match module_name {
             "command" | "shell" => Ok(include_str!("../templates/modules/command.rs").to_string()),
-            "package" => Ok(include_str!("../templates/modules/package.rs").to_string()),
-            "service" => Ok(include_str!("../templates/modules/service.rs").to_string()),
+            "package" | "apt" | "yum" | "dnf" | "zypper" => {
+                Ok(include_str!("../templates/modules/package.rs").to_string())
+            }
+            "service" | "systemd" => {
+                Ok(include_str!("../templates/modules/service.rs").to_string())
+            }
             "debug" => Ok(include_str!("../templates/modules/debug.rs").to_string()),
             "copy" => Ok(include_str!("../templates/modules/copy.rs").to_string()),
             "file" => Ok(include_str!("../templates/modules/file.rs").to_string()),

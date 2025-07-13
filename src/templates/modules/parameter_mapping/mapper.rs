@@ -26,6 +26,15 @@ impl ParameterMapper {
         handlers.insert("service".to_string(), Box::new(ServiceParameterHandler));
         handlers.insert("debug".to_string(), Box::new(DebugParameterHandler));
 
+        // Package management modules - all use PackageParameterHandler
+        handlers.insert("apt".to_string(), Box::new(PackageParameterHandler));
+        handlers.insert("yum".to_string(), Box::new(PackageParameterHandler));
+        handlers.insert("dnf".to_string(), Box::new(PackageParameterHandler));
+        handlers.insert("zypper".to_string(), Box::new(PackageParameterHandler));
+
+        // Service management modules - all use ServiceParameterHandler
+        handlers.insert("systemd".to_string(), Box::new(ServiceParameterHandler));
+
         Self {
             module_handlers: handlers,
         }

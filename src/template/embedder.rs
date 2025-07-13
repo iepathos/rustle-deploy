@@ -1,3 +1,4 @@
+use crate::execution::plan_converter::RustlePlanConverter;
 use crate::execution::rustle_plan::{BinaryDeploymentPlan, RustlePlanOutput};
 use crate::types::deployment::RuntimeConfig;
 use anyhow::Result;
@@ -12,6 +13,8 @@ pub enum EmbedError {
     Serialization(#[from] serde_json::Error),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("Plan conversion failed: {0}")]
+    PlanConversion(#[from] crate::execution::compatibility::ConversionError),
 }
 
 pub struct DataEmbedder {
@@ -31,7 +34,10 @@ impl DataEmbedder {
         binary_deployment: &BinaryDeploymentPlan,
         _target_info: &TargetInfo,
     ) -> Result<EmbeddedData, EmbedError> {
-        let execution_plan_json = serde_json::to_string_pretty(execution_plan)?;
+        // Convert RustlePlanOutput to ExecutionPlan to properly handle condition conversion
+        let converter = RustlePlanConverter::new();
+        let converted_plan = converter.convert_to_execution_plan(execution_plan)?;
+        let execution_plan_json = serde_json::to_string_pretty(&converted_plan)?;
 
         let runtime_config = RuntimeConfig {
             controller_endpoint: binary_deployment.controller_endpoint.clone(),
