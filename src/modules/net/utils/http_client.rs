@@ -85,7 +85,7 @@ impl HttpClientWrapper {
         if let Some(ca_cert_path) = ca_path {
             let ca_cert = std::fs::read(ca_cert_path)?;
             let cert = reqwest::Certificate::from_pem(&ca_cert).map_err(|e| {
-                HttpClientError::Certificate(format!("Failed to load CA certificate: {}", e))
+                HttpClientError::Certificate(format!("Failed to load CA certificate: {e}"))
             })?;
 
             builder = builder.add_root_certificate(cert);
@@ -208,7 +208,7 @@ impl HttpClientWrapper {
 
         // Add range header for resume
         if let Some(offset) = resume_from {
-            request = request.header("Range", format!("bytes={}-", offset));
+            request = request.header("Range", format!("bytes={offset}-"));
         }
 
         // Add authentication
@@ -221,9 +221,9 @@ impl HttpClientWrapper {
         if !response.status().is_success()
             && response.status() != reqwest::StatusCode::PARTIAL_CONTENT
         {
-            return Err(HttpClientError::Request(reqwest::Error::from(
+            return Err(HttpClientError::Request(
                 response.error_for_status().unwrap_err(),
-            )));
+            ));
         }
 
         Ok(response)
@@ -316,8 +316,8 @@ mod tests {
     fn test_http_method_conversion() {
         // This test just ensures the enum values exist and can be matched
         match HttpMethod::GET {
-            HttpMethod::GET => assert!(true),
-            _ => assert!(false),
+            HttpMethod::GET => {}
+            _ => panic!("Unexpected HTTP method"),
         }
     }
 }

@@ -1,4 +1,4 @@
-//! Archive module for creating various archive formats
+//! Create module for creating various archive formats
 
 use crate::modules::{
     archive::{
@@ -86,7 +86,7 @@ impl ArchiveModule {
                     )
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("TAR creation failed: {}", e),
+                        message: format!("TAR creation failed: {e}"),
                     })?;
 
                 // Calculate results
@@ -99,7 +99,7 @@ impl ArchiveModule {
                     .create(&filtered_sources, dest_path, args.compression_level)
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("ZIP creation failed: {}", e),
+                        message: format!("ZIP creation failed: {e}"),
                     })?;
 
                 // Calculate results
@@ -108,7 +108,7 @@ impl ArchiveModule {
             }
             _ => {
                 return Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!("Unsupported archive format for creation: {:?}", format),
+                    message: format!("Unsupported archive format for creation: {format:?}"),
                 });
             }
         };
@@ -128,13 +128,13 @@ impl ArchiveModule {
                 if path.is_file() {
                     tokio::fs::remove_file(path).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to remove source file: {}", e),
+                            message: format!("Failed to remove source file: {e}"),
                         }
                     })?;
                 } else if path.is_dir() {
                     tokio::fs::remove_dir_all(path).await.map_err(|e| {
                         ModuleExecutionError::ExecutionFailed {
-                            message: format!("Failed to remove source directory: {}", e),
+                            message: format!("Failed to remove source directory: {e}"),
                         }
                     })?;
                 }
@@ -152,7 +152,7 @@ impl ArchiveModule {
             total_size: creation_result.total_size,
             compressed_size: creation_result.compressed_size,
             compression_ratio: creation_result.compression_ratio(),
-            format: format!("{:?}", format),
+            format: format!("{format:?}"),
         })
     }
 
@@ -169,14 +169,14 @@ impl ArchiveModule {
                 "tar.xz" | "txz" | "xz" => Ok(ArchiveFormat::TarXz),
                 "zip" => Ok(ArchiveFormat::Zip),
                 _ => Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!("Unsupported format: {}", format_str),
+                    message: format!("Unsupported format: {format_str}"),
                 }),
             }
         } else {
             // Auto-detect from extension
             ArchiveDetector::detect_from_extension(dest_path).map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to detect format: {}", e),
+                    message: format!("Failed to detect format: {e}"),
                 }
             })
         }
@@ -247,7 +247,7 @@ impl ArchiveModule {
             let compressed_size = tokio::fs::metadata(dest_path)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to get archive size: {}", e),
+                    message: format!("Failed to get archive size: {e}"),
                 })?
                 .len();
             result.set_compressed_size(compressed_size);
@@ -262,7 +262,7 @@ impl ArchiveModule {
         tokio::task::spawn_blocking(move || Self::calculate_path_size_sync(&path))
             .await
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Task join error: {}", e),
+                message: format!("Task join error: {e}"),
             })?
     }
 
@@ -270,19 +270,19 @@ impl ArchiveModule {
         if path.is_file() {
             Ok(std::fs::metadata(path)
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to get file size: {}", e),
+                    message: format!("Failed to get file size: {e}"),
                 })?
                 .len())
         } else if path.is_dir() {
             let mut total_size = 0u64;
             let read_dir =
                 std::fs::read_dir(path).map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read directory: {}", e),
+                    message: format!("Failed to read directory: {e}"),
                 })?;
 
             for entry in read_dir {
                 let entry = entry.map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read directory entry: {}", e),
+                    message: format!("Failed to read directory entry: {e}"),
                 })?;
                 total_size += Self::calculate_path_size_sync(&entry.path())?;
             }
@@ -299,13 +299,13 @@ impl ArchiveModule {
             use std::os::unix::fs::PermissionsExt;
             let mode = u32::from_str_radix(mode, 8).map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Invalid mode: {}", e),
+                    message: format!("Invalid mode: {e}"),
                 }
             })?;
             let permissions = std::fs::Permissions::from_mode(mode);
             std::fs::set_permissions(path, permissions).map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to set permissions: {}", e),
+                    message: format!("Failed to set permissions: {e}"),
                 }
             })?;
         }
@@ -332,7 +332,7 @@ impl ArchiveModule {
                         .map(|user| user.map(|u| u.uid))
                         .unwrap_or(None)
                         .ok_or_else(|| ModuleExecutionError::ExecutionFailed {
-                            message: format!("Unknown user: {}", owner),
+                            message: format!("Unknown user: {owner}"),
                         })
                 })?)
             } else {
@@ -345,7 +345,7 @@ impl ArchiveModule {
                         .map(|group| group.map(|g| g.gid))
                         .unwrap_or(None)
                         .ok_or_else(|| ModuleExecutionError::ExecutionFailed {
-                            message: format!("Unknown group: {}", group),
+                            message: format!("Unknown group: {group}"),
                         })
                 })?)
             } else {
@@ -353,7 +353,7 @@ impl ArchiveModule {
             };
 
             chown(path, uid, gid).map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to change ownership: {}", e),
+                message: format!("Failed to change ownership: {e}"),
             })?;
         }
         #[cfg(not(unix))]

@@ -102,7 +102,7 @@ impl UnarchiveModule {
                     .extract(src_path, dest_path, &format, &options)
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("TAR extraction failed: {}", e),
+                        message: format!("TAR extraction failed: {e}"),
                     })?
             }
             ArchiveFormat::Zip => {
@@ -111,12 +111,12 @@ impl UnarchiveModule {
                     .extract(src_path, dest_path, &options)
                     .await
                     .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                        message: format!("ZIP extraction failed: {}", e),
+                        message: format!("ZIP extraction failed: {e}"),
                     })?
             }
             _ => {
                 return Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!("Unsupported archive format: {:?}", format),
+                    message: format!("Unsupported archive format: {format:?}"),
                 });
             }
         };
@@ -138,7 +138,7 @@ impl UnarchiveModule {
             dest: args.dest.clone(),
             extracted_files,
             total_size: extraction_result.total_size,
-            format: format!("{:?}", format),
+            format: format!("{format:?}"),
         })
     }
 
@@ -153,7 +153,7 @@ impl UnarchiveModule {
         // Fall back to magic byte detection
         let file = tokio::fs::File::open(path).await.map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to open archive: {}", e),
+                message: format!("Failed to open archive: {e}"),
             }
         })?;
 
@@ -161,7 +161,7 @@ impl UnarchiveModule {
 
         ArchiveDetector::detect_from_magic_bytes(&mut reader).map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to detect archive format: {}", e),
+                message: format!("Failed to detect archive format: {e}"),
             }
         })
     }
@@ -187,7 +187,7 @@ impl UnarchiveModule {
             tokio::fs::read(path)
                 .await
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to read file for checksum: {}", e),
+                    message: format!("Failed to read file for checksum: {e}"),
                 })?;
 
         let actual_hash = match algorithm.to_lowercase().as_str() {
@@ -208,7 +208,7 @@ impl UnarchiveModule {
             }
             _ => {
                 return Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!("Unsupported checksum algorithm: {}", algorithm),
+                    message: format!("Unsupported checksum algorithm: {algorithm}"),
                 });
             }
         };
@@ -216,8 +216,7 @@ impl UnarchiveModule {
         if actual_hash != expected_hash {
             return Err(ModuleExecutionError::ExecutionFailed {
                 message: format!(
-                    "Checksum mismatch. Expected: {}, Actual: {}",
-                    expected_hash, actual_hash
+                    "Checksum mismatch. Expected: {expected_hash}, Actual: {actual_hash}"
                 ),
             });
         }

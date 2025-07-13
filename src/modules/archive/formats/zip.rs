@@ -39,7 +39,7 @@ impl ZipHandler {
 
         task::spawn_blocking(move || Self::extract_sync(&src, &dest, &options))
             .await
-            .map_err(|e| ZipError::Path(format!("Task join error: {}", e)))?
+            .map_err(|e| ZipError::Path(format!("Task join error: {e}")))?
     }
 
     fn extract_sync(
@@ -139,7 +139,7 @@ impl ZipHandler {
 
         task::spawn_blocking(move || Self::create_sync(&sources, &dest, compression_level))
             .await
-            .map_err(|e| ZipError::Path(format!("Task join error: {}", e)))?
+            .map_err(|e| ZipError::Path(format!("Task join error: {e}")))?
     }
 
     fn create_sync(
@@ -200,7 +200,7 @@ impl ZipHandler {
             let path = entry.path();
             let relative_path = path
                 .strip_prefix(base_path)
-                .map_err(|e| ZipError::Path(format!("Path error: {}", e)))?;
+                .map_err(|e| ZipError::Path(format!("Path error: {e}")))?;
 
             if path.is_file() {
                 let name = relative_path.to_string_lossy().to_string();
@@ -247,7 +247,7 @@ impl ZipHandler {
         {
             use std::os::unix::fs::PermissionsExt;
             let mode = u32::from_str_radix(mode, 8)
-                .map_err(|e| ZipError::Path(format!("Invalid mode: {}", e)))?;
+                .map_err(|e| ZipError::Path(format!("Invalid mode: {e}")))?;
             let permissions = std::fs::Permissions::from_mode(mode);
             std::fs::set_permissions(path, permissions)?;
         }
@@ -272,7 +272,7 @@ impl ZipHandler {
                     nix::unistd::User::from_name(owner)
                         .map(|user| user.map(|u| u.uid))
                         .unwrap_or(None)
-                        .ok_or_else(|| ZipError::Path(format!("Unknown user: {}", owner)))
+                        .ok_or_else(|| ZipError::Path(format!("Unknown user: {owner}")))
                 })?)
             } else {
                 None
@@ -283,14 +283,14 @@ impl ZipHandler {
                     nix::unistd::Group::from_name(group)
                         .map(|group| group.map(|g| g.gid))
                         .unwrap_or(None)
-                        .ok_or_else(|| ZipError::Path(format!("Unknown group: {}", group)))
+                        .ok_or_else(|| ZipError::Path(format!("Unknown group: {group}")))
                 })?)
             } else {
                 None
             };
 
             chown(path, uid, gid)
-                .map_err(|e| ZipError::Path(format!("Failed to change ownership: {}", e)))?;
+                .map_err(|e| ZipError::Path(format!("Failed to change ownership: {e}")))?;
         }
         #[cfg(not(unix))]
         {

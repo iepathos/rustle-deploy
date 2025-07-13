@@ -47,8 +47,7 @@ async fn test_template_generation_includes_parameter_handlers() {
 
     assert!(
         missing_handlers.is_empty(),
-        "Template generation is missing essential parameter handlers: {:?}",
-        missing_handlers
+        "Template generation is missing essential parameter handlers: {missing_handlers:?}"
     );
 
     // Verify that the handlers contain the expected content
@@ -141,11 +140,8 @@ async fn test_template_generation_parameter_mapping_consistency() {
         })
         .collect();
 
-    println!("Handlers in mod.rs: {:?}", mod_handlers);
-    println!(
-        "Handlers registered in mapper.rs: {:?}",
-        mapper_registrations
-    );
+    println!("Handlers in mod.rs: {mod_handlers:?}");
+    println!("Handlers registered in mapper.rs: {mapper_registrations:?}");
 
     // Essential handlers that should be both exported and registered
     let essential_handler_names = ["file", "copy", "command", "debug", "package", "service"];
@@ -153,14 +149,12 @@ async fn test_template_generation_parameter_mapping_consistency() {
     for handler_name in &essential_handler_names {
         assert!(
             mod_handlers.contains(handler_name),
-            "Handler '{}' should be declared in mod.rs but wasn't found",
-            handler_name
+            "Handler '{handler_name}' should be declared in mod.rs but wasn't found"
         );
 
         assert!(
             mapper_registrations.contains(handler_name),
-            "Handler '{}' should be registered in mapper.rs but wasn't found",
-            handler_name
+            "Handler '{handler_name}' should be registered in mapper.rs but wasn't found"
         );
     }
 

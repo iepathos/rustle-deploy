@@ -60,17 +60,7 @@ impl<W: Write> CompressionWriter<W> {
     }
 
     pub fn new_bzip2(writer: W, level: Option<u8>) -> Result<Self, CompressionError> {
-        let compression_level = level
-            .map(|l| {
-                if l > 9 {
-                    9
-                } else if l < 1 {
-                    1
-                } else {
-                    l
-                }
-            })
-            .unwrap_or(6);
+        let compression_level = level.map(|l| l.clamp(1, 9)).unwrap_or(6);
 
         let compression = bzip2::Compression::new(compression_level as u32);
         Ok(CompressionWriter::Bzip2(BzEncoder::new(

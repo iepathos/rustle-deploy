@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExtractionOptions {
     pub exclude: Option<Vec<String>>,
     pub include: Option<Vec<String>>,
@@ -10,19 +10,6 @@ pub struct ExtractionOptions {
     pub mode: Option<String>,
     pub owner: Option<String>,
     pub group: Option<String>,
-}
-
-impl Default for ExtractionOptions {
-    fn default() -> Self {
-        Self {
-            exclude: None,
-            include: None,
-            keep_newer: false,
-            mode: None,
-            owner: None,
-            group: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +46,7 @@ impl Default for ExtractionResult {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CreationOptions {
     pub exclude: Option<Vec<String>>,
     pub exclude_path: Option<Vec<String>>,
@@ -68,20 +55,6 @@ pub struct CreationOptions {
     pub mode: Option<String>,
     pub owner: Option<String>,
     pub group: Option<String>,
-}
-
-impl Default for CreationOptions {
-    fn default() -> Self {
-        Self {
-            exclude: None,
-            exclude_path: None,
-            compression_level: None,
-            remove_source: false,
-            mode: None,
-            owner: None,
-            group: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

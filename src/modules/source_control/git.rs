@@ -71,8 +71,7 @@ impl GitModule {
         if let Some(hostname) = SshManager::extract_hostname(&args.repo) {
             if !args.accept_hostkey.unwrap_or(false) && !self.ssh_manager.is_known_host(&hostname) {
                 warnings.push(format!(
-                    "Host {} is not in known hosts. Consider setting accept_hostkey: true",
-                    hostname
+                    "Host {hostname} is not in known hosts. Consider setting accept_hostkey: true"
                 ));
             }
         }
@@ -84,18 +83,16 @@ impl GitModule {
             } else {
                 self.get_current_state(dest_path).await?
             }
+        } else if args.clone.unwrap_or(true) {
+            self.clone_repository(args, dest_path, &mut warnings)
+                .await?
         } else {
-            if args.clone.unwrap_or(true) {
-                self.clone_repository(args, dest_path, &mut warnings)
-                    .await?
-            } else {
-                return Err(ModuleExecutionError::ExecutionFailed {
-                    message: format!(
-                        "Repository does not exist at {} and clone is disabled",
-                        args.dest
-                    ),
-                });
-            }
+            return Err(ModuleExecutionError::ExecutionFailed {
+                message: format!(
+                    "Repository does not exist at {} and clone is disabled",
+                    args.dest
+                ),
+            });
         };
 
         Ok(GitResult {
@@ -119,7 +116,7 @@ impl GitModule {
         let result = task::spawn_blocking(move || Self::clone_repository_sync(&args, &dest_path))
             .await
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Task join error: {}", e),
+                message: format!("Task join error: {e}"),
             })??;
 
         warnings.extend(result.warnings.clone());
@@ -138,7 +135,7 @@ impl GitModule {
 
             // Validate SSH key
             if let Err(e) = cred_handler.validate_ssh_key() {
-                warnings.push(format!("SSH key validation warning: {}", e));
+                warnings.push(format!("SSH key validation warning: {e}"));
             }
         }
 
@@ -182,7 +179,7 @@ impl GitModule {
         // Perform the clone
         let repo = builder.clone(&args.repo, dest_path).map_err(|e| {
             ModuleExecutionError::ExecutionFailed {
-                message: format!("Clone failed: {}", e),
+                message: format!("Clone failed: {e}"),
             }
         })?;
 
@@ -214,7 +211,7 @@ impl GitModule {
         let result = task::spawn_blocking(move || Self::update_repository_sync(&args, &dest_path))
             .await
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Task join error: {}", e),
+                message: format!("Task join error: {e}"),
             })??;
 
         warnings.extend(result.warnings.clone());
@@ -228,7 +225,7 @@ impl GitModule {
         let mut warnings = Vec::new();
         let repo =
             Repository::open(dest_path).map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to open repository: {}", e),
+                message: format!("Failed to open repository: {e}"),
             })?;
 
         // Check repository state
@@ -236,8 +233,7 @@ impl GitModule {
         if repo_state != RepositoryState::Clean {
             if args.force.unwrap_or(false) {
                 warnings.push(format!(
-                    "Repository is in {:?} state, forcing update",
-                    repo_state
+                    "Repository is in {repo_state:?} state, forcing update"
                 ));
                 // Reset to clean state
                 let head = repo.head()?;
@@ -246,8 +242,7 @@ impl GitModule {
             } else {
                 return Err(ModuleExecutionError::ExecutionFailed {
                     message: format!(
-                        "Repository is in {:?} state. Use force: true to override",
-                        repo_state
+                        "Repository is in {repo_state:?} state. Use force: true to override"
                     ),
                 });
             }
@@ -273,7 +268,7 @@ impl GitModule {
         let mut remote =
             repo.find_remote("origin")
                 .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to find origin remote: {}", e),
+                    message: format!("Failed to find origin remote: {e}"),
                 })?;
 
         let mut fetch_options = FetchOptions::new();
@@ -282,7 +277,7 @@ impl GitModule {
         remote
             .fetch(&[] as &[&str], Some(&mut fetch_options), None)
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Fetch failed: {}", e),
+                message: format!("Fetch failed: {e}"),
             })?;
 
         // Update to latest or specific version
@@ -310,7 +305,7 @@ impl GitModule {
         task::spawn_blocking(move || {
             let repo = Repository::open(&dest_path).map_err(|e| {
                 ModuleExecutionError::ExecutionFailed {
-                    message: format!("Failed to open repository: {}", e),
+                    message: format!("Failed to open repository: {e}"),
                 }
             })?;
 
@@ -326,7 +321,7 @@ impl GitModule {
         })
         .await
         .map_err(|e| ModuleExecutionError::ExecutionFailed {
-            message: format!("Task join error: {}", e),
+            message: format!("Task join error: {e}"),
         })?
     }
 
@@ -340,7 +335,7 @@ impl GitModule {
         }
 
         // Try remote branch
-        if let Ok(branch) = repo.find_branch(&format!("origin/{}", version), BranchType::Remote) {
+        if let Ok(branch) = repo.find_branch(&format!("origin/{version}"), BranchType::Remote) {
             let commit = branch.get().peel_to_commit()?;
 
             // Create local branch tracking remote
@@ -353,7 +348,7 @@ impl GitModule {
         }
 
         // Try to resolve as tag
-        if let Ok(tag_ref) = repo.find_reference(&format!("refs/tags/{}", version)) {
+        if let Ok(tag_ref) = repo.find_reference(&format!("refs/tags/{version}")) {
             let commit = tag_ref.peel_to_commit()?;
             repo.set_head_detached(commit.id())?;
             repo.checkout_head(None)?;
@@ -370,7 +365,7 @@ impl GitModule {
         }
 
         Err(ModuleExecutionError::ExecutionFailed {
-            message: format!("Could not resolve version: {}", version),
+            message: format!("Could not resolve version: {version}"),
         })
     }
 
@@ -382,8 +377,7 @@ impl GitModule {
         let upstream_names = ["origin/main", "origin/master"];
 
         for upstream_name in &upstream_names {
-            if let Ok(upstream_ref) =
-                repo.find_reference(&format!("refs/remotes/{}", upstream_name))
+            if let Ok(upstream_ref) = repo.find_reference(&format!("refs/remotes/{upstream_name}"))
             {
                 let upstream_commit = upstream_ref.peel_to_commit()?;
 
@@ -397,7 +391,7 @@ impl GitModule {
                     // Can fast-forward
                     let commit_id = upstream_commit.id().to_string();
                     repo.checkout_tree(&upstream_commit.into_object(), None)?;
-                    repo.set_head(&format!("refs/remotes/{}", upstream_name))?;
+                    repo.set_head(&format!("refs/remotes/{upstream_name}"))?;
                     return Ok(commit_id);
                 }
 
@@ -417,13 +411,13 @@ impl GitModule {
         let head = repo
             .head()
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to get HEAD: {}", e),
+                message: format!("Failed to get HEAD: {e}"),
             })?;
 
         let commit = head
             .peel_to_commit()
             .map_err(|e| ModuleExecutionError::ExecutionFailed {
-                message: format!("Failed to peel HEAD to commit: {}", e),
+                message: format!("Failed to peel HEAD to commit: {e}"),
             })?;
 
         Ok(commit.id().to_string())
@@ -609,18 +603,16 @@ impl ExecutionModule for GitModule {
                     format!("Would check repository status at {}", git_args.dest),
                 )
             }
+        } else if git_args.clone.unwrap_or(true) {
+            (
+                true,
+                format!("Would clone {} to {}", git_args.repo, git_args.dest),
+            )
         } else {
-            if git_args.clone.unwrap_or(true) {
-                (
-                    true,
-                    format!("Would clone {} to {}", git_args.repo, git_args.dest),
-                )
-            } else {
-                (
-                    false,
-                    format!("Repository does not exist and clone is disabled"),
-                )
-            }
+            (
+                false,
+                "Repository does not exist and clone is disabled".to_string(),
+            )
         };
 
         Ok(ModuleResult {

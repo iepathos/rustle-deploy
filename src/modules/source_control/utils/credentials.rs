@@ -105,14 +105,13 @@ impl CredentialHandler {
             let path = Path::new(key_path);
             if !path.exists() {
                 return Err(CredentialError::SshKeyNotFound(format!(
-                    "SSH key not found: {}",
-                    key_path
+                    "SSH key not found: {key_path}"
                 )));
             }
 
             // Check if file is readable
             std::fs::metadata(path).map_err(|e| {
-                CredentialError::SshKeyNotFound(format!("Cannot read SSH key {}: {}", key_path, e))
+                CredentialError::SshKeyNotFound(format!("Cannot read SSH key {key_path}: {e}"))
             })?;
         }
         Ok(())

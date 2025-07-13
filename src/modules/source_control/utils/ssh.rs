@@ -104,7 +104,7 @@ impl SshManager {
             if file_path.exists() {
                 if let Ok(content) = std::fs::read_to_string(file_path) {
                     for line in content.lines() {
-                        if line.starts_with(hostname) || line.contains(&format!(" {} ", hostname)) {
+                        if line.starts_with(hostname) || line.contains(&format!(" {hostname} ")) {
                             return true;
                         }
                     }

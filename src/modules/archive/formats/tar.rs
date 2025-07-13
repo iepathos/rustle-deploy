@@ -55,7 +55,7 @@ impl TarHandler {
 
         task::spawn_blocking(move || Self::extract_sync(&src, &dest, &format, &options))
             .await
-            .map_err(|e| TarError::Tar(format!("Task join error: {}", e)))?
+            .map_err(|e| TarError::Tar(format!("Task join error: {e}")))?
     }
 
     fn extract_sync(
@@ -166,7 +166,7 @@ impl TarHandler {
 
         task::spawn_blocking(move || Self::create_sync(&sources, &dest, &format, compression_level))
             .await
-            .map_err(|e| TarError::Tar(format!("Task join error: {}", e)))?
+            .map_err(|e| TarError::Tar(format!("Task join error: {e}")))?
     }
 
     fn create_sync(
@@ -255,7 +255,7 @@ impl TarHandler {
         {
             use std::os::unix::fs::PermissionsExt;
             let mode = u32::from_str_radix(mode, 8)
-                .map_err(|e| TarError::Path(format!("Invalid mode: {}", e)))?;
+                .map_err(|e| TarError::Path(format!("Invalid mode: {e}")))?;
             let permissions = std::fs::Permissions::from_mode(mode);
             std::fs::set_permissions(path, permissions)?;
         }
@@ -281,7 +281,7 @@ impl TarHandler {
                     nix::unistd::User::from_name(owner)
                         .map(|user| user.map(|u| u.uid))
                         .unwrap_or(None)
-                        .ok_or_else(|| TarError::Path(format!("Unknown user: {}", owner)))
+                        .ok_or_else(|| TarError::Path(format!("Unknown user: {owner}")))
                 })?)
             } else {
                 None
@@ -293,14 +293,14 @@ impl TarHandler {
                     nix::unistd::Group::from_name(group)
                         .map(|group| group.map(|g| g.gid))
                         .unwrap_or(None)
-                        .ok_or_else(|| TarError::Path(format!("Unknown group: {}", group)))
+                        .ok_or_else(|| TarError::Path(format!("Unknown group: {group}")))
                 })?)
             } else {
                 None
             };
 
             chown(path, uid, gid)
-                .map_err(|e| TarError::Path(format!("Failed to change ownership: {}", e)))?;
+                .map_err(|e| TarError::Path(format!("Failed to change ownership: {e}")))?;
         }
         #[cfg(not(unix))]
         {

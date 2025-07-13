@@ -164,7 +164,7 @@ fn test_copy_module_basic_params() {
     assert_eq!(mapped.get("src").unwrap().as_str().unwrap(), "/source/file");
     assert_eq!(mapped.get("dest").unwrap().as_str().unwrap(), "/dest/file");
     assert_eq!(mapped.get("mode").unwrap().as_str().unwrap(), "0644");
-    assert_eq!(mapped.get("backup").unwrap().as_bool().unwrap(), true);
+    assert!(mapped.get("backup").unwrap().as_bool().unwrap());
 }
 
 #[test]
@@ -219,9 +219,9 @@ fn test_copy_module_all_parameters() {
     assert_eq!(mapped.get("mode").unwrap().as_str().unwrap(), "0644");
     assert_eq!(mapped.get("owner").unwrap().as_str().unwrap(), "user");
     assert_eq!(mapped.get("group").unwrap().as_str().unwrap(), "group");
-    assert_eq!(mapped.get("backup").unwrap().as_bool().unwrap(), true);
-    assert_eq!(mapped.get("force").unwrap().as_bool().unwrap(), false);
-    assert_eq!(mapped.get("preserve").unwrap().as_bool().unwrap(), true);
+    assert!(mapped.get("backup").unwrap().as_bool().unwrap());
+    assert!(!mapped.get("force").unwrap().as_bool().unwrap());
+    assert!(mapped.get("preserve").unwrap().as_bool().unwrap());
     assert_eq!(
         mapped.get("validate").unwrap().as_str().unwrap(),
         "test -f %s"

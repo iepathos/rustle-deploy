@@ -26,14 +26,14 @@ pub struct AuthHandler;
 impl AuthHandler {
     /// Create basic authentication header
     pub fn create_basic_auth(username: &str, password: &str) -> String {
-        let credentials = format!("{}:{}", username, password);
+        let credentials = format!("{username}:{password}");
         let encoded = base64::engine::general_purpose::STANDARD.encode(credentials.as_bytes());
-        format!("Basic {}", encoded)
+        format!("Basic {encoded}")
     }
 
     /// Create bearer token authentication header
     pub fn create_bearer_auth(token: &str) -> String {
-        format!("Bearer {}", token)
+        format!("Bearer {token}")
     }
 
     /// Create API key authentication header
@@ -80,7 +80,7 @@ impl AuthHandler {
                     parsed_url.scheme(),
                     parsed_url.host_str().unwrap_or(""),
                     if let Some(port) = parsed_url.port() {
-                        format!(":{}", port)
+                        format!(":{port}")
                     } else {
                         String::new()
                     },
@@ -128,17 +128,12 @@ impl AuthHandler {
 
     /// Extract bearer token from Authorization header
     pub fn extract_bearer_token(auth_header: &str) -> Option<String> {
-        if auth_header.starts_with("Bearer ") {
-            Some(auth_header[7..].to_string())
-        } else {
-            None
-        }
+        auth_header.strip_prefix("Bearer ").map(|s| s.to_string())
     }
 
     /// Extract basic auth credentials from Authorization header
     pub fn extract_basic_auth(auth_header: &str) -> Option<(String, String)> {
-        if auth_header.starts_with("Basic ") {
-            let encoded = &auth_header[6..];
+        if let Some(encoded) = auth_header.strip_prefix("Basic ") {
             if let Ok(decoded_bytes) = base64::engine::general_purpose::STANDARD.decode(encoded) {
                 if let Ok(decoded_str) = String::from_utf8(decoded_bytes) {
                     if let Some(colon_pos) = decoded_str.find(':') {
