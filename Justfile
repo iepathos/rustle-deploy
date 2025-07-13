@@ -45,6 +45,28 @@ build-release:
 build-native:
     RUSTFLAGS="-C target-cpu=native" cargo build --release
 
+# Build for specific target
+build-target TARGET:
+    cargo build --release --target {{TARGET}}
+
+# Build for common Linux targets
+build-linux:
+    cargo build --release --target x86_64-unknown-linux-gnu
+    cargo build --release --target aarch64-unknown-linux-gnu
+
+# Build using cargo-zigbuild for better cross-compilation
+build-zig TARGET:
+    cargo zigbuild --release --target {{TARGET}}
+
+# Build for all common targets using zigbuild
+build-all-targets:
+    cargo zigbuild --release --target x86_64-unknown-linux-gnu
+    cargo zigbuild --release --target x86_64-unknown-linux-musl
+    cargo zigbuild --release --target aarch64-unknown-linux-gnu
+    cargo zigbuild --release --target aarch64-unknown-linux-musl
+    cargo zigbuild --release --target x86_64-apple-darwin
+    cargo zigbuild --release --target aarch64-apple-darwin
+
 # Clean build artifacts
 clean:
     cargo clean
@@ -198,9 +220,34 @@ install-tools:
     rustup component add rustfmt clippy
     cargo install cargo-watch cargo-tarpaulin cargo-audit cargo-outdated cargo-zigbuild
 
+# Install cross-compilation targets
+install-targets:
+    rustup target add x86_64-unknown-linux-gnu
+    rustup target add x86_64-unknown-linux-musl
+    rustup target add aarch64-unknown-linux-gnu
+    rustup target add aarch64-unknown-linux-musl
+    rustup target add x86_64-apple-darwin
+    rustup target add aarch64-apple-darwin
+    @echo "✅ Cross-compilation targets installed"
+
+# Check if required targets are installed
+check-targets:
+    @echo "Checking installed targets..."
+    @rustup target list --installed | grep -q x86_64-unknown-linux-gnu || echo "❌ Missing x86_64-unknown-linux-gnu"
+    @rustup target list --installed | grep -q aarch64-unknown-linux-gnu || echo "❌ Missing aarch64-unknown-linux-gnu"
+    @rustup target list --installed | grep -q x86_64-unknown-linux-musl || echo "❌ Missing x86_64-unknown-linux-musl"
+    @rustup target list --installed | grep -q aarch64-unknown-linux-musl || echo "❌ Missing aarch64-unknown-linux-musl"
+    @rustup target list --installed | grep -qE "(x86_64|aarch64)-apple-darwin" || echo "❌ Missing Darwin targets"
+    @echo "Run 'just install-targets' to install missing targets"
+
 # Install additional development tools
 install-extras:
     cargo install cargo-expand cargo-machete cargo-deny cargo-udeps
+
+# Complete setup for rustle-deploy development (tools + targets)
+setup: install-tools install-targets
+    @echo "🚀 Rustle-deploy development environment ready!"
+    @echo "Run 'just check-targets' to verify cross-compilation targets"
 
 # Install git hooks
 install-hooks:

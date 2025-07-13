@@ -146,6 +146,55 @@ impl TargetDetector {
         self.create_target_spec(&host_target, OptimizationLevel::Release)
     }
 
+    /// Create a target specification from compilation requirements (from execution plan)
+    ///
+    /// This is the preferred method for creating target specs as it uses the target
+    /// information determined by rustle-plan based on the inventory and hosts.
+    /// This ensures consistency between planning and deployment phases.
+    ///
+    /// # Arguments
+    /// * `requirements` - Compilation requirements from the execution plan
+    /// * `optimization_level` - Optimization level for the compilation
+    ///
+    /// # Returns
+    /// A `TargetSpecification` configured for the target platform specified in the plan
+    pub fn create_target_spec_from_requirements(
+        &self,
+        requirements: &crate::execution::rustle_plan::CompilationRequirements,
+        optimization_level: OptimizationLevel,
+    ) -> Result<TargetSpecification, TargetDetectionError> {
+        // Build target triple from requirements
+        let target_triple = if let Some(ref triple) = requirements.target_triple {
+            // Use explicit target triple if provided
+            triple.clone()
+        } else {
+            // Build from arch and os
+            let arch = if requirements.target_arch.is_empty() {
+                "x86_64"
+            } else {
+                &requirements.target_arch
+            };
+
+            let os = if requirements.target_os.is_empty() {
+                "linux"
+            } else {
+                &requirements.target_os
+            };
+
+            // Construct a reasonable target triple
+            match (arch, os) {
+                ("x86_64", "linux") => "x86_64-unknown-linux-gnu".to_string(),
+                ("aarch64", "linux") => "aarch64-unknown-linux-gnu".to_string(),
+                ("x86_64", "darwin") | ("x86_64", "macos") => "x86_64-apple-darwin".to_string(),
+                ("aarch64", "darwin") | ("aarch64", "macos") => "aarch64-apple-darwin".to_string(),
+                ("x86_64", "windows") => "x86_64-pc-windows-msvc".to_string(),
+                _ => format!("{arch}-unknown-{os}-gnu"),
+            }
+        };
+
+        self.create_target_spec(&target_triple, optimization_level)
+    }
+
     /// Create a target specification for a given target triple
     pub fn create_target_spec(
         &self,

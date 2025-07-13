@@ -428,12 +428,25 @@ async fn run_compilation(
     // Set up target detection
     let target_detector = TargetDetector::new();
 
-    // Determine target specification
-    let target_spec = if cli.localhost_test {
+    // Determine target specification - prefer execution plan's compilation requirements
+    let target_spec = if let Some(deployment) = rustle_plan.binary_deployments.first() {
+        // Use target information from the execution plan
+        info!("Using target information from execution plan");
+        target_detector.create_target_spec_from_requirements(
+            &deployment.compilation_requirements,
+            optimization_level.clone(),
+        )?
+    } else if cli.localhost_test {
+        // Fallback to localhost for testing
+        info!("No binary deployments in plan, using localhost target for testing");
         target_detector.create_localhost_target_spec()?
     } else if let Some(target) = &cli.target {
+        // Allow manual override via CLI
+        info!("Using manually specified target: {}", target);
         target_detector.create_target_spec(target, optimization_level.clone())?
     } else {
+        // Final fallback
+        warn!("No target information available, defaulting to localhost");
         target_detector.create_localhost_target_spec()?
     };
 
@@ -859,14 +872,6 @@ struct ExecutionPlanSummary {
 
 async fn parse_execution_plan_from_file(path: &std::path::Path) -> Result<ExecutionPlanSummary> {
     let content = tokio::fs::read_to_string(path).await?;
-    parse_execution_plan_json(&content)
-}
-
-async fn parse_execution_plan_from_stdin() -> Result<ExecutionPlanSummary> {
-    use tokio::io::{self, AsyncReadExt};
-    let mut stdin = io::stdin();
-    let mut content = String::new();
-    stdin.read_to_string(&mut content).await?;
     parse_execution_plan_json(&content)
 }
 

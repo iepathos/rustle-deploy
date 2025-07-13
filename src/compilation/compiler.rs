@@ -438,6 +438,18 @@ impl ProcessExecutor {
                 }
             }
         } else {
+            // Check if target is installed before attempting build
+            if !self
+                .is_target_installed(&target_spec.target_triple)
+                .await
+                .unwrap_or(false)
+            {
+                tracing::info!(
+                    "Target '{}' not installed. Consider running 'rustup target add {}' or 'just install-targets'",
+                    target_spec.target_triple,
+                    target_spec.target_triple
+                );
+            }
             self.execute_cargo_build(
                 &project.project_dir,
                 &target_spec.target_triple,
@@ -561,6 +573,18 @@ impl ProcessExecutor {
         target: &str,
         optimization: &OptimizationLevel,
     ) -> Result<PathBuf, CompilationError> {
+        // Check if target is installed before attempting compilation
+        if !self.is_target_installed(target).await? {
+            tracing::warn!(
+                "Target '{}' is not installed. Run 'rustup target add {}' to install it.",
+                target,
+                target
+            );
+            return Err(CompilationError::UnsupportedTarget {
+                target: format!("{target} (not installed)"),
+            });
+        }
+
         let mut cmd = tokio::process::Command::new(&self.cargo_path);
 
         cmd.arg("build")
@@ -586,6 +610,27 @@ impl ProcessExecutor {
         }
 
         self.determine_binary_path(project_dir, target, optimization)
+    }
+
+    async fn is_target_installed(&self, target: &str) -> Result<bool, CompilationError> {
+        let output = tokio::process::Command::new("rustup")
+            .args(["target", "list", "--installed"])
+            .output()
+            .await
+            .map_err(|e| {
+                CompilationError::ProcessExecution(format!(
+                    "Failed to check installed targets: {e}"
+                ))
+            })?;
+
+        if !output.status.success() {
+            return Err(CompilationError::ProcessExecution(
+                "Failed to list installed targets".to_string(),
+            ));
+        }
+
+        let installed_targets = String::from_utf8_lossy(&output.stdout);
+        Ok(installed_targets.lines().any(|line| line.trim() == target))
     }
 
     fn add_optimization_flags(

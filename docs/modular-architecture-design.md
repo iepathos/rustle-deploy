@@ -33,12 +33,12 @@ Rustle implements a revolutionary modular architecture that combines the composa
 ```mermaid
 graph LR
     A[Playbook YAML] --> B[rustle-parse]
-    B --> C[rustle-plan]
+    B --> G[rustle-facts]
+    G --> C[rustle-plan]
     C --> D{Binary Deployment?}
     D -->|Yes| E[rustle-deploy]
     D -->|No| F[rustle-exec]
     E --> F
-    G[rustle-facts] --> C
     H[rustle-connect] --> F
     I[rustle-vault] --> B
     J[rustle-template] --> B
@@ -55,7 +55,7 @@ graph LR
 | **rustle-deploy** | Binary compilation & deployment | Execution plans | Deployed binaries | Enables 10x+ performance gains |
 | **rustle-exec** | Hybrid execution orchestration | Execution plans | Task results | 10x+ faster with binary deployment |
 | **rustle-connect** | SSH connection management | Host lists | Managed connections | 80% faster connection setup |
-| **rustle-facts** | System discovery | Host patterns | System facts | 5x faster fact gathering |
+| **rustle-facts** | Architecture/OS detection | Parsed JSON | Enriched JSON with arch/OS | Minimal SSH for compilation targets |
 | **rustle-vault** | Secrets management | Encrypted files | Decrypted secrets | Secure credential handling |
 | **rustle-template** | Template processing | Jinja2 templates | Rendered content | 10x faster templating |
 | **rustle-watch** | Monitoring & drift detection | Configuration state | Compliance reports | Continuous monitoring |
@@ -69,8 +69,11 @@ graph LR
 
 ```rust
 // Key interface
-pub fn parse_playbook(path: &Path) -> Result<ParsedPlaybook, ParseError>
-pub fn parse_inventory(path: &Path) -> Result<ParsedInventory, ParseError>
+pub fn parse<W: Write>(
+    playbook_path: &Path,
+    inventory_path: &Path,
+    output: W,  // JSON output to rustle-facts
+) -> Result<(), ParseError>
 
 // Performance features
 - Template resolution with minijinja (10x faster than Python Jinja2)
@@ -87,11 +90,11 @@ pub fn parse_inventory(path: &Path) -> Result<ParsedInventory, ParseError>
 
 ```rust
 // Key interface
-pub fn plan_execution(
-    playbook: &ParsedPlaybook, 
-    inventory: &ParsedInventory,
+pub fn plan_execution<R: Read, W: Write>(
+    input: R,   // Enriched JSON from rustle-facts
+    output: W,  // Execution plan JSON
     options: &PlanningOptions,
-) -> Result<ExecutionPlan, PlanError>
+) -> Result<(), PlanError>
 
 // Binary deployment decision making
 pub fn analyze_binary_deployment_opportunities(
@@ -172,22 +175,35 @@ pub fn deploy_binary(binary: &CompiledBinary, target: &Host) -> Result<(), Conne
 - Parallel connection establishment
 ```
 
-### 6. rustle-facts: High-Performance Discovery
+### 6. rustle-facts: Minimal Architecture Detection
 
-**Core Innovation**: Parallel fact collection with intelligent caching.
+**Core Innovation**: Enriches parsed data with target architecture/OS information needed for compilation.
 
 ```rust
 // Key interface
-pub fn collect_facts(
+pub fn enrich_with_architecture_facts<R: Read, W: Write>(
+    input: R,  // Parsed JSON from rustle-parse
+    output: W, // Enriched JSON for rustle-plan
+) -> Result<(), FactError>
+
+// Internal process
+pub fn gather_minimal_facts(
     hosts: &[String],
-    subset_filter: Option<&[String]>,
-) -> Result<HashMap<String, HostFacts>, FactError>
+) -> Result<HashMap<String, ArchitectureFacts>, FactError>
+
+// Facts gathered (minimal SSH operations)
+pub struct ArchitectureFacts {
+    pub ansible_architecture: String,  // x86_64, aarch64, etc.
+    pub ansible_system: String,        // Linux, Darwin, Windows
+    pub ansible_os_family: String,     // RedHat, Debian, etc.
+    pub ansible_distribution: Option<String>, // Ubuntu, CentOS, etc.
+}
 
 // Performance features
-- Parallel collection across hosts (50+ concurrent)
-- Intelligent caching with staleness detection
-- Modular collectors for extensibility
-- Binary deployment integration for fact updates
+- Minimal SSH connections (only gather what's needed)
+- Parallel collection across hosts
+- Caches results for subsequent runs
+- Adds facts to inventory data in parsed JSON
 ```
 
 ### 7. Integration Tools
@@ -206,6 +222,7 @@ rustle playbook -i inventory.yml site.yml
 
 # Automatic orchestration
 rustle-parse site.yml inventory.yml | \
+  rustle-facts | \
   rustle-plan --strategy binary-hybrid --optimize | \
   rustle-deploy --incremental | \
   rustle-exec --binary-mode auto --cleanup-binaries
@@ -221,8 +238,9 @@ rustle-parse site.yml inventory.yml | \
 
 ```bash
 # Explicit control for advanced users
-rustle-parse playbook.yml > parsed.json
-rustle-plan --force-binary --optimize < parsed.json > plan.json
+rustle-parse playbook.yml inventory.yml > parsed.json
+rustle-facts < parsed.json > enriched.json
+rustle-plan --force-binary --optimize < enriched.json > plan.json
 rustle-deploy --parallel 16 --verify < plan.json > deployment.json
 rustle-exec --binary-timeout 300 --report-file results.json < plan.json
 ```
@@ -233,12 +251,12 @@ rustle-exec --binary-timeout 300 --report-file results.json < plan.json
 - Custom pipeline integration
 - Performance monitoring and tuning
 
-### 3. Facts-Integrated Pipeline
+### 3. Cached Facts Pipeline
 
 ```bash
-# Fact-aware deployment
-rustle-facts inventory.yml > facts.json
-rustle-parse -e @facts.json playbook.yml | \
+# Using cached architecture facts for faster subsequent runs
+rustle-parse playbook.yml inventory.yml | \
+  rustle-facts --cache-file ~/.rustle/arch-facts.json | \
   rustle-plan --optimize | \
   rustle-deploy | \
   rustle-exec
@@ -260,13 +278,29 @@ rustle-exec plan.json && \
 All tools communicate through well-defined JSON schemas:
 
 ```typescript
-// Parsed Playbook (rustle-parse → rustle-plan)
+// Parsed Playbook (rustle-parse → rustle-facts)
 interface ParsedPlaybook {
   metadata: PlaybookMetadata;
   plays: ParsedPlay[];
   variables: Record<string, any>;
   facts_required: boolean;
   vault_ids: string[];
+  inventory: ParsedInventory;
+}
+
+// Enriched Playbook (rustle-facts → rustle-plan)
+interface EnrichedPlaybook extends ParsedPlaybook {
+  inventory: ParsedInventory & {
+    host_facts: Record<string, ArchitectureFacts>;
+  };
+}
+
+// Architecture facts added by rustle-facts
+interface ArchitectureFacts {
+  ansible_architecture: string;
+  ansible_system: string;
+  ansible_os_family: string;
+  ansible_distribution?: string;
 }
 
 // Execution Plan (rustle-plan → rustle-deploy/rustle-exec)
@@ -308,7 +342,7 @@ interface DeploymentReport {
 | Execution Planning | N/A | 0.2s | **New capability** |
 | Task Execution (SSH) | 45s | 8s | **5.6x faster** |
 | Task Execution (Binary) | 45s | 4s | **11.3x faster** |
-| Fact Gathering | 12s | 2.1s | **5.7x faster** |
+| Architecture Detection | 2s | 0.3s | **6.7x faster** |
 | Template Rendering | 3.2s | 0.3s | **10.7x faster** |
 | **Overall Pipeline** | **60s** | **5.2s** | **11.5x faster** |
 
@@ -320,6 +354,30 @@ interface DeploymentReport {
 | Network Round-trips | 200+ | 15 (with binary deployment) |
 | CPU Usage | High (Python interpretation) | Low (compiled execution) |
 | Disk I/O | High (temporary files) | Minimal (streaming) |
+
+## Fact Gathering Strategy
+
+### Two-Phase Fact Collection
+
+**Phase 1: Compile-Time Facts (rustle-facts)**
+- **When**: During planning, before compilation
+- **What**: Architecture, OS, distribution info
+- **How**: Minimal SSH to gather only what's needed for compilation
+- **Cached**: Yes, results are cached for subsequent runs
+- **Purpose**: Enable target-specific compilation and conditional filtering
+
+**Phase 2: Runtime Facts (embedded in binaries)**
+- **When**: During task execution on target hosts
+- **What**: Dynamic facts (memory, disk, network interfaces, etc.)
+- **How**: Gathered locally by the deployed binary
+- **Cached**: No, gathered fresh for each execution
+- **Purpose**: Support task conditionals and variable interpolation
+
+This separation ensures:
+1. Minimal SSH operations before compilation
+2. No SSH fact gathering during execution
+3. Binaries are self-sufficient with fact gathering capabilities
+4. Architecture-specific optimizations during compilation
 
 ## Binary Deployment Deep Dive
 
@@ -379,10 +437,13 @@ let results = coordinate_binary_execution(&deployments).await?;
 
 // Execution flow:
 1. Parse embedded execution plan
-2. Collect local facts if needed
+2. Collect runtime facts locally (if needed by tasks)
 3. Execute tasks using statically linked modules
 4. Report results back to controller
 5. Cleanup and exit
+
+// Note: Architecture/OS facts are determined at compile-time by rustle-facts
+// Runtime facts (memory, disk, etc.) are gathered by the binary on the target
 ```
 
 ## Error Handling and Resilience
@@ -557,8 +618,8 @@ rustle playbook --strategy binary-hybrid -i inventory.yml site.yml
 **Phase 3: Advanced Features**
 ```bash
 # Use advanced pipeline features
-rustle-facts inventory.yml > facts.json
-rustle-parse -e @facts.json site.yml | \
+rustle-parse site.yml inventory.yml | \
+  rustle-facts | \
   rustle-plan --optimize --binary-threshold 3 | \
   rustle-deploy --parallel 16 | \
   rustle-exec --report-file deployment_report.json
