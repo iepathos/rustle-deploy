@@ -76,7 +76,7 @@ libc = "0.2"
 winapi = { version = "0.3", features = ["winnt", "winsvc"] }
 
 [build-dependencies]
-cargo_metadata = "0.18"
+cargo_metadata = "0.21"
 
 [dev-dependencies]
 tempfile = "3"
