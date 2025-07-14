@@ -57,7 +57,7 @@ lz4 = "1.24"
 zstd = "0.13"
 zip = "0.6"
 xz2 = "0.1"
-bzip2 = "0.4"
+bzip2 = "0.6"
 
 # Code generation
 proc-macro2 = "1.0"
