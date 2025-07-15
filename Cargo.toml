@@ -55,7 +55,7 @@ base64 = "0.22"
 # Compression
 lz4 = "1.24"
 zstd = "0.13"
-zip = "0.6"
+zip = "4.3"
 xz2 = "0.1"
 bzip2 = "0.4"
 
