@@ -1,0 +1,253 @@
+{
+  "metadata": {
+    "created_at": "2025-07-14T23:31:37.549341Z",
+    "rustle_plan_version": "0.1.0",
+    "playbook_hash": "8d1386d0f7759457a0b5efea5de4816e",
+    "inventory_hash": "1d3ba63bcee3d5ba7c8537b0aad4879b",
+    "planning_options": {
+      "limit": null,
+      "tags": [],
+      "skip_tags": [],
+      "check_mode": false,
+      "diff_mode": false,
+      "forks": 50,
+      "serial": null,
+      "strategy": "BinaryHybrid",
+      "binary_threshold": 5,
+      "force_binary": false,
+      "force_ssh": false
+    }
+  },
+  "plays": [
+    {
+      "play_id": "play-0",
+      "name": "Comprehensive file operations playbook",
+      "strategy": "BinaryHybrid",
+      "serial": null,
+      "hosts": [
+        "localhost"
+      ],
+      "batches": [
+        {
+          "batch_id": "binary-batch",
+          "hosts": [
+            "localhost"
+          ],
+          "tasks": [
+            {
+              "task_id": "task_0",
+              "name": "Create base directory structure",
+              "module": "file",
+              "args": {
+                "state": "directory",
+                "mode": "0755",
+                "recurse": true,
+                "path": "/tmp/rustle_file_test"
+              },
+              "hosts": [
+                "localhost"
+              ],
+              "dependencies": [],
+              "conditions": [
+                {
+                  "Tag": {
+                    "tags": [
+                      "ansible",
+                      "files",
+                      "copy",
+                      "permissions"
+                    ]
+                  }
+                }
+              ],
+              "tags": [
+                "ansible",
+                "files",
+                "copy",
+                "permissions"
+              ],
+              "notify": [],
+              "execution_order": 0,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 1,
+                "nanos": 0
+              },
+              "risk_level": "Medium"
+            },
+            {
+              "task_id": "task_1",
+              "name": "Create subdirectories",
+              "module": "file",
+              "args": {
+                "mode": "0750",
+                "path": "/tmp/rustle_file_test/",
+                "state": "directory"
+              },
+              "hosts": [
+                "localhost"
+              ],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 1,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 1,
+                "nanos": 0
+              },
+              "risk_level": "Medium"
+            },
+            {
+              "task_id": "task_2",
+              "name": "Copy configuration file",
+              "module": "copy",
+              "args": {
+                "src": "tests/fixtures/files/test_files/sample.conf",
+                "dest": "/tmp/rustle_file_test/config/app.conf",
+                "mode": "0644",
+                "backup": true
+              },
+              "hosts": [
+                "localhost"
+              ],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 2,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 2,
+                "nanos": 600000000
+              },
+              "risk_level": "Medium"
+            },
+            {
+              "task_id": "task_3",
+              "name": "Create empty log file",
+              "module": "file",
+              "args": {
+                "mode": "0664",
+                "path": "/tmp/rustle_file_test/logs/app.log",
+                "state": "touch"
+              },
+              "hosts": [
+                "localhost"
+              ],
+              "dependencies": [],
+              "conditions": [],
+              "tags": [],
+              "notify": [],
+              "execution_order": 3,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 1,
+                "nanos": 0
+              },
+              "risk_level": "Medium"
+            },
+            {
+              "task_id": "task_4",
+              "name": "Create symbolic link",
+              "module": "file",
+              "args": {
+                "dest": "/tmp/rustle_file_test/current.conf",
+                "state": "link",
+                "src": "/tmp/rustle_file_test/config/app.conf"
+              },
+              "hosts": [
+                "localhost"
+              ],
+              "dependencies": [],
+              "conditions": [
+                {
+                  "When": {
+                    "expression": "ansible_system != \"Windows\""
+                  }
+                }
+              ],
+              "tags": [],
+              "notify": [],
+              "execution_order": 4,
+              "can_run_parallel": true,
+              "estimated_duration": {
+                "secs": 1,
+                "nanos": 100000000
+              },
+              "risk_level": "Medium"
+            }
+          ],
+          "parallel_groups": [],
+          "dependencies": [],
+          "estimated_duration": null
+        }
+      ],
+      "handlers": [],
+      "estimated_duration": null
+    }
+  ],
+  "binary_deployments": [
+    {
+      "deployment_id": "group_0",
+      "target_hosts": [
+        "localhost"
+      ],
+      "binary_name": "rustle-runner-group_0",
+      "tasks": [
+        "task_0",
+        "task_1",
+        "task_2",
+        "task_3",
+        "task_4"
+      ],
+      "modules": [
+        "file",
+        "file",
+        "copy",
+        "file",
+        "file"
+      ],
+      "embedded_data": {
+        "execution_plan": "{\"group_id\":\"group_0\",\"hosts\":[\"localhost\"],\"tasks\":[{\"args\":{\"mode\":\"0755\",\"path\":\"/tmp/rustle_file_test\",\"recurse\":true,\"state\":\"directory\"},\"can_run_parallel\":true,\"conditions\":[{\"Tag\":{\"tags\":[\"ansible\",\"files\",\"copy\",\"permissions\"]}}],\"dependencies\":[],\"estimated_duration\":{\"nanos\":0,\"secs\":1},\"execution_order\":0,\"hosts\":[\"localhost\"],\"module\":\"file\",\"name\":\"Create base directory structure\",\"notify\":[],\"risk_level\":\"Medium\",\"tags\":[\"ansible\",\"files\",\"copy\",\"permissions\"],\"task_id\":\"task_0\"},{\"args\":{\"mode\":\"0750\",\"path\":\"/tmp/rustle_file_test/\",\"state\":\"directory\"},\"can_run_parallel\":true,\"conditions\":[],\"dependencies\":[],\"estimated_duration\":{\"nanos\":0,\"secs\":1},\"execution_order\":1,\"hosts\":[\"localhost\"],\"module\":\"file\",\"name\":\"Create subdirectories\",\"notify\":[],\"risk_level\":\"Medium\",\"tags\":[],\"task_id\":\"task_1\"},{\"args\":{\"backup\":true,\"dest\":\"/tmp/rustle_file_test/config/app.conf\",\"mode\":\"0644\",\"src\":\"tests/fixtures/files/test_files/sample.conf\"},\"can_run_parallel\":true,\"conditions\":[],\"dependencies\":[],\"estimated_duration\":{\"nanos\":600000000,\"secs\":2},\"execution_order\":2,\"hosts\":[\"localhost\"],\"module\":\"copy\",\"name\":\"Copy configuration file\",\"notify\":[],\"risk_level\":\"Medium\",\"tags\":[],\"task_id\":\"task_2\"},{\"args\":{\"mode\":\"0664\",\"path\":\"/tmp/rustle_file_test/logs/app.log\",\"state\":\"touch\"},\"can_run_parallel\":true,\"conditions\":[],\"dependencies\":[],\"estimated_duration\":{\"nanos\":0,\"secs\":1},\"execution_order\":3,\"hosts\":[\"localhost\"],\"module\":\"file\",\"name\":\"Create empty log file\",\"notify\":[],\"risk_level\":\"Medium\",\"tags\":[],\"task_id\":\"task_3\"},{\"args\":{\"dest\":\"/tmp/rustle_file_test/current.conf\",\"src\":\"/tmp/rustle_file_test/config/app.conf\",\"state\":\"link\"},\"can_run_parallel\":true,\"conditions\":[{\"When\":{\"expression\":\"ansible_system != \\\"Windows\\\"\"}}],\"dependencies\":[],\"estimated_duration\":{\"nanos\":100000000,\"secs\":1},\"execution_order\":4,\"hosts\":[\"localhost\"],\"module\":\"file\",\"name\":\"Create symbolic link\",\"notify\":[],\"risk_level\":\"Medium\",\"tags\":[],\"task_id\":\"task_4\"}]}",
+        "static_files": [
+          {
+            "src_path": "tests/fixtures/files/test_files/sample.conf",
+            "dest_path": "/tmp/rustle_file_test/config/app.conf",
+            "checksum": "placeholder-checksum",
+            "size": 1024
+          }
+        ],
+        "variables": {},
+        "facts_required": [
+          "ansible_user_gid",
+          "ansible_user_uid"
+        ]
+      },
+      "execution_mode": "Controller",
+      "estimated_size": 5258240,
+      "compilation_requirements": {
+        "target_arch": "aarch64",
+        "target_os": "darwin",
+        "rust_version": "1.70.0",
+        "cross_compilation": false,
+        "static_linking": true
+      }
+    }
+  ],
+  "total_tasks": 5,
+  "estimated_duration": {
+    "secs": 12,
+    "nanos": 10000000
+  },
+  "estimated_compilation_time": {
+    "secs": 30,
+    "nanos": 500000000
+  },
+  "parallelism_score": 1.0,
+  "network_efficiency_score": 1.0,
+  "hosts": [
+    "localhost"
+  ]
+}

@@ -192,7 +192,21 @@ impl TargetDetector {
             }
         };
 
-        self.create_target_spec(&target_triple, optimization_level)
+        let mut target_spec = self.create_target_spec(&target_triple, optimization_level)?;
+
+        // Honor the cross_compilation flag from the plan
+        // If the plan explicitly says cross_compilation is needed, ensure we use the appropriate strategy
+        if requirements.cross_compilation {
+            target_spec.requires_zig = true;
+            target_spec.compilation_strategy =
+                crate::types::compilation::CompilationStrategy::ZigBuild;
+            tracing::info!(
+                "Execution plan indicates cross-compilation is required for target: {}",
+                target_triple
+            );
+        }
+
+        Ok(target_spec)
     }
 
     /// Create a target specification for a given target triple
